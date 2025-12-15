@@ -41,73 +41,113 @@ export default function GlobalSearch({ open, onOpenChange }) {
         }
     }, [open]);
 
-    // Search Logic
-    useEffect(() => {
-        const fetchResults = async () => {
-            if (!debouncedQuery || debouncedQuery.trim().length < 2) {
-                setResults([]);
-                return;
-            }
+  useEffect(() => {
+  if (!debouncedQuery || debouncedQuery.trim().length < 2) {
+    setResults([]);
+    setLoading(false);
+    return;
+  }
 
-            const cacheKey = `search:${mode}:${debouncedQuery.trim().toLowerCase()}`;
-            const cached = sessionStorage.getItem(cacheKey);
+  const controller = new AbortController();
+  let cancelled = false;
 
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    setResults(parsed);
-                    setLoading(false);
-                    return;
-                } catch (e) {
-                    sessionStorage.removeItem(cacheKey);
-                }
-            }
+  const fetchResults = async () => {
+    const q = debouncedQuery.trim();
+    const lowerQ = q.toLowerCase();
+    const cacheKey = `search:${mode}:${lowerQ}`;
 
-            setLoading(true);
-            try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}&type=${mode}`);
-                if (!res.ok) throw new Error("Search failed");
-                const data = await res.json();
+    setLoading(true);
 
-                // Client-side Ranking & Filtering
-                let processed = data.results || [];
+    // 1️⃣ CACHE READ (ONLY IF NON-EMPTY)
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.length > 0 && !cancelled) {
+          setResults(parsed);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
 
-                // 1. Remove noise - minimal filtering
-                // We keep items even if they don't have posters, as unbiased search was requested.
-                // Just ensure they are valid media objects.
-                processed = processed.filter(item => item.id && (item.title || item.name));
+    try {
+      let results = [];
 
-                // 2. Simple Sort: Exact Match > Popularity (Trust TMDB's relevance for the rest)
-                processed.sort((a, b) => {
-                    const aTitle = (a.title || a.name || "").toLowerCase();
-                    const bTitle = (b.title || b.name || "").toLowerCase();
-                    const q = debouncedQuery.toLowerCase();
+      // 2️⃣ AUTO MODE = SMART MERGE
+      if (mode === "auto") {
+        const [movieRes, tvRes] = await Promise.all([
+          fetch(`/api/search?q=${encodeURIComponent(q)}&type=movie`, { signal: controller.signal }),
+          fetch(`/api/search?q=${encodeURIComponent(q)}&type=tv`, { signal: controller.signal })
+        ]);
 
-                    // Always show exact matches first
-                    if (aTitle === q && bTitle !== q) return -1;
-                    if (bTitle === q && aTitle !== q) return 1;
+        if (movieRes.ok) {
+          const movieData = await movieRes.json();
+          results.push(...(movieData.results || []));
+        }
 
-                    return 0; // Keep TMDB order
-                });
+        if (tvRes.ok) {
+          const tvData = await tvRes.json();
+          results.push(...(tvData.results || []));
+        }
 
-                setResults(processed);
+        // Remove duplicates (same id across types is rare but safe)
+        const seen = new Set();
+        results = results.filter(item => {
+          const key = `${item.media_type}:${item.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
-                try {
-                    sessionStorage.setItem(cacheKey, JSON.stringify(processed));
-                } catch (e) {
-                    sessionStorage.clear();
-                }
+      } else {
+        // 3️⃣ MOVIE / TV MODE (SINGLE FETCH)
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(q)}&type=${mode}`,
+          { signal: controller.signal }
+        );
 
-            } catch (error) {
-                console.error(error);
-                setResults([]);
-            } finally {
-                setLoading(false);
-            }
-        };
+        if (res.ok) {
+          const data = await res.json();
+          results = data.results || [];
+        }
+      }
 
-        fetchResults();
-    }, [debouncedQuery, mode]);
+      if (!cancelled) {
+        setResults(results);
+        setLoading(false);
+      }
+
+      // 4️⃣ CACHE WRITE (ONLY IF NON-EMPTY)
+      if (results.length > 0) {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(results));
+        } catch {
+          sessionStorage.clear();
+        }
+      }
+
+    } catch (err) {
+      if (err.name === "AbortError") return;
+
+      if (!cancelled) {
+        console.error("Search error:", err);
+        setResults([]);
+        setLoading(false);
+      }
+    }
+  };
+
+  fetchResults();
+
+  return () => {
+    cancelled = true;
+    controller.abort();
+  };
+}, [debouncedQuery, mode]);
+
 
     const handleSelect = (item) => {
         onOpenChange(false);

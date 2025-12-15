@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import MovieCache from "@/models/MovieCache";
 
+// Only use this for TMDB fresh data
+const safeJSON = (obj) => JSON.parse(JSON.stringify(obj));
+
 export async function POST(req) {
   console.log("🟦 [API] /api/movie called");
 
@@ -9,37 +12,44 @@ export async function POST(req) {
     await connectDB();
     console.log("🟢 MongoDB connected");
 
-    const { id } = await req.json();
+    const body = await req.json();
+    const id = body?.id;
+
     console.log("📥 Incoming movie ID:", id);
 
     if (!id) {
-      console.log("❌ Missing ID");
-      return NextResponse.json({ error: "Movie ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Movie ID required" },
+        { status: 400 }
+      );
     }
 
     const token = process.env.TMDB_API_READ_ACCESS_TOKEN;
     if (!token) {
-      console.log("❌ Missing TMDB token");
-      return NextResponse.json({ error: "TMDB token missing" }, { status: 500 });
+      return NextResponse.json(
+        { error: "TMDB token missing" },
+        { status: 500 }
+      );
     }
 
     // ---------------------------
-    // 1️⃣ CHECK CACHE
+    // 1️⃣ CHECK CACHE (SAFE)
     // ---------------------------
     const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-    const cached = await MovieCache.findOne({ movieId: id });
+    const cached = await MovieCache.findOne({ movieId: id }).lean();
 
-    if (cached) {
-      console.log("📦 Cache found in DB. Age (ms):", Date.now() - cached.cachedAt.getTime());
+    if (cached?.data && cached?.cachedAt) {
+      const age = Date.now() - new Date(cached.cachedAt).getTime();
+      console.log("📦 Cache found. Age (ms):", age);
+
+      if (age < CACHE_TTL) {
+        console.log("🔥 Serving from MongoDB cache");
+        return NextResponse.json(cached.data, { status: 200 });
+      }
     }
 
-    if (cached && Date.now() - cached.cachedAt.getTime() < CACHE_TTL) {
-      console.log("🔥 Serving from MongoDB cache");
-      return NextResponse.json(cached.data, { status: 200 });
-    }
-
-    console.log("⏳ Cache expired or missing → Fetching fresh TMDB data...");
+    console.log("⏳ Cache expired / invalid → Fetching from TMDB");
 
     // ---------------------------
     // 2️⃣ TMDB FETCH
@@ -48,7 +58,7 @@ export async function POST(req) {
       "videos",
       "credits",
       "keywords",
-      "watch_providers" // FIXED NAME !!
+      "watch_providers",
     ].join(",");
 
     const TMDB_URL =
@@ -69,46 +79,55 @@ export async function POST(req) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.log("❌ TMDB returned error:", errText);
       return NextResponse.json(
         { error: "TMDB failed", details: errText },
         { status: res.status }
       );
     }
 
-    // SAFE JSON PARSE
     let data;
     try {
       data = await res.json();
-      console.log("🟢 TMDB JSON parsed successfully");
-    } catch (parseErr) {
-      console.log("❌ JSON PARSE ERROR:", parseErr);
+    } catch {
       return NextResponse.json(
-        { error: "Invalid TMDB JSON response" },
+        { error: "Invalid TMDB JSON" },
         { status: 502 }
       );
     }
 
+    if (!data || typeof data !== "object") {
+      return NextResponse.json(
+        { error: "TMDB returned invalid data" },
+        { status: 502 }
+      );
+    }
+
+    const cleanData = safeJSON(data);
+
     // ---------------------------
-    // 3️⃣ SAVE CACHE
+    // 3️⃣ SAVE CACHE (CLEAN)
     // ---------------------------
     try {
       await MovieCache.findOneAndUpdate(
         { movieId: id },
-        { data, cachedAt: new Date() },
+        {
+          movieId: id,
+          data: cleanData,
+          cachedAt: new Date(),
+        },
         { upsert: true }
       );
-      console.log("💾 TMDB data saved to MongoDB cache");
+      console.log("💾 Cached TMDB data");
     } catch (cacheErr) {
-      console.log("❌ Cache DB save error:", cacheErr);
+      console.log("❌ Cache save failed:", cacheErr);
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(cleanData, { status: 200 });
 
   } catch (err) {
-    console.log("💥 MOVIE DETAILS ERROR (outer catch):", err);
+    console.log("💥 MOVIE API ERROR:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

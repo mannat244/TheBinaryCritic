@@ -106,7 +106,6 @@ export default function TvPage() {
   useEffect(() => {
     const load = async () => {
       const key = `tv_${id}`;
-
       const data = await browserCacheFetch(
         key,
         async () => {
@@ -118,12 +117,13 @@ export default function TvPage() {
         },
         60 * 60 // TTL = 1 hour
       );
-
       setTv(data);
       setLoading(false);
-      console.log(data);
+      // Set document title to show name
+      if (data && data.name) {
+        document.title = `${data.name} | The Binary Critic`;
+      }
     };
-
     load();
   }, [id]);
 

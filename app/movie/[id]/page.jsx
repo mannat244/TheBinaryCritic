@@ -111,7 +111,6 @@ export default function Page() {
   useEffect(() => {
     const load = async () => {
       const key = `movie_${id}`;
-
       const data = await browserCacheFetch(
         key,
         async () => {
@@ -123,12 +122,13 @@ export default function Page() {
         },
         60 * 60 // TTL = 1 hour
       );
-
       setMovie(data);
       setLoading(false);
-      console.log(data);
+      // Set document title to movie name
+      if (data && data.title) {
+        document.title = `${data.title} | The Binary Critic`;
+      }
     };
-
     load();
   }, [id]);
 

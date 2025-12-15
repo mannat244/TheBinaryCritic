@@ -6,48 +6,52 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q");
-    const type = searchParams.get("type") || "auto"; // auto, movie, tv
+    const type = searchParams.get("type") || "auto";
 
-    if (!query) {
+    if (!query || query.trim().length < 2) {
       return NextResponse.json({ results: [] });
     }
 
     const token = process.env.TMDB_API_READ_ACCESS_TOKEN;
     if (!token) {
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+      return NextResponse.json({ results: [] });
     }
-
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
 
     let endpoint = "/search/multi";
     if (type === "movie") endpoint = "/search/movie";
     if (type === "tv") endpoint = "/search/tv";
 
-    // We use en-US for metadata consistency, but region=IN to boost Indian content ranking
-    const url = `${TMDB_BASE_URL}${endpoint}?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&region=IN&page=1`;
+    const url =
+      `${TMDB_BASE_URL}${endpoint}` +
+      `?query=${encodeURIComponent(query)}` +
+      `&include_adult=false&language=en-US&region=IN&page=1`;
 
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        accept: "application/json",
+      },
+    });
 
+    // 🔥 SOFT FAIL — never throw in search
     if (!res.ok) {
-      throw new Error(`TMDB API error: ${res.status}`);
+      console.warn("TMDB search failed:", res.status);
+      return NextResponse.json({ results: [] });
     }
 
     const data = await res.json();
-    let results = data.results || [];
+    let results = data?.results || [];
 
-    // Filter for 'auto' mode to only show movies and tv shows (remove people, etc.)
     if (type === "auto") {
-      results = results.filter(item => item.media_type === "movie" || item.media_type === "tv");
+      results = results.filter(
+        (item) => item.media_type === "movie" || item.media_type === "tv"
+      );
     } else {
-      // For specific modes, TMDB returns correct types, but we can ensure media_type is set for client consistency
-      results = results.map(item => ({ ...item, media_type: type }));
+      results = results.map((item) => ({ ...item, media_type: type }));
     }
 
-    // Basic server-side filtering to reduce payload size
-    results = results.map(item => ({
+    // Reduce payload
+    results = results.map((item) => ({
       id: item.id,
       media_type: item.media_type,
       title: item.title || item.name,
@@ -61,8 +65,8 @@ export async function GET(req) {
 
     return NextResponse.json({ results });
 
-  } catch (error) {
-    console.error("Search API Error:", error);
-    return NextResponse.json({ error: "Failed to fetch search results" }, { status: 500 });
+  } catch (err) {
+    console.error("Search API crash:", err);
+    return NextResponse.json({ results: [] });
   }
 }
