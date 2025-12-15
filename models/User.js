@@ -24,24 +24,24 @@ const UserSchema = new mongoose.Schema(
       listsCount: { type: Number, default: 0 },
     },
 
-    onboardingCompleted: { type: Boolean, default: true },
+    onboardingCompleted: { type: Boolean, default: false },
 
     preferences: {
-  user_vector: { type: Object, default: {} }, 
-  dislike_text: { type: String, default: "" }, 
-  preference_text: { type: String, default: "" },  // ⭐ ADDED THIS
-  preference_embedding: { type: [Number], default: [] },
-  dislike_embedding: { type: [Number], default: [] },
-},
+      user_vector: { type: Object, default: {} },
+      dislike_text: { type: String, default: "" },
+      preference_text: { type: String, default: "" },  // ⭐ ADDED THIS
+      preference_embedding: { type: [Number], default: [] },
+      dislike_embedding: { type: [Number], default: [] },
+    },
 
     // Reference to Pinecone Vector (embedding)
-  embeddingId: { type: String }, // can be user._id for simplicity
+    embeddingId: { type: String }, // can be user._id for simplicity
 
-  watchlistId: { type: mongoose.Schema.Types.ObjectId, ref: "User_Watchlist", default: null },
+    watchlistId: { type: mongoose.Schema.Types.ObjectId, ref: "User_Watchlist", default: null },
 
-  collectionsIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User_Collection", default: [] }],
-  
-  watchedId: { type: mongoose.Schema.Types.ObjectId, ref: "User_Watched", default: null },
+    collectionsIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User_Collection", default: [] }],
+
+    watchedId: { type: mongoose.Schema.Types.ObjectId, ref: "User_Watched", default: null },
 
     // Timestamps
   },

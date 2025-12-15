@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Eye, ListPlus, Plus, Check, Loader2, Star, Clock } from "lucide-react";
+import { Eye, ListPlus, Plus, Check, Loader2, Star, Clock, Share2, Link, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  WhatsappShareButton, WhatsappIcon,
+  TwitterShareButton, XIcon,
+  RedditShareButton, RedditIcon,
+  TelegramShareButton, TelegramIcon
+} from "react-share";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,18 +23,18 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useMediaStore } from "@/hooks/useMediaStore";
 
-export default function MediaActions({ tmdbId, mediaType, title, posterPath, releaseDate,  hasUserReview = false }) {
+export default function MediaActions({ tmdbId, mediaType, title, posterPath, releaseDate, hasUserReview = false }) {
   const { data: session } = useSession();
-  const { 
-    watched, 
+  const {
+    watched,
     watchlist,
-    collections, 
+    collections,
     interested,
-    setWatched, 
+    setWatched,
     setWatchlist,
-    setCollections, 
+    setCollections,
     setInterested,
-    addWatched, 
+    addWatched,
     removeWatched,
     addWatchlist,
     removeWatchlist,
@@ -40,9 +46,30 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
   } = useMediaStore();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [collectionsLoading, setCollectionsLoading] = useState(false);
+
+  const getShareUrl = () => {
+    if (typeof window === 'undefined') return "";
+    return `${window.location.origin}/${mediaType}/${tmdbId}`;
+  };
+
+  const getShareTitle = () => {
+    return `Check out ${title} on The Binary Critic!`;
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      toast.success("Link copied to clipboard!");
+      setShareOpen(false);
+    } catch (err) {
+      console.error("Failed to copy link", err);
+      toast.error("Failed to copy link");
+    }
+  };
 
   // Derived state from global store
   const isWatched = watched?.some(
@@ -121,7 +148,7 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
   const handleToggleWatchlist = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const wasWatchlist = isWatchlist;
 
     // Optimistic Update
@@ -129,8 +156,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       removeWatchlist(Number(tmdbId), mediaType);
       toast.info("Removed from watchlist");
     } else {
-      addWatchlist({ 
-        tmdbId: Number(tmdbId), 
+      addWatchlist({
+        tmdbId: Number(tmdbId),
         mediaType,
         title,
         poster_path: posterPath,
@@ -152,7 +179,7 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       // Revert on error
       if (wasWatchlist) addWatchlist({ tmdbId: Number(tmdbId), mediaType });
       else removeWatchlist(Number(tmdbId), mediaType);
-      
+
       console.error(err);
       toast.error("Failed to update watchlist status");
     }
@@ -160,61 +187,61 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
 
 
 
- const handleToggleWatched = async (e) => {
-  if (e?.preventDefault) e.preventDefault();
-  if (e?.stopPropagation) e.stopPropagation();
+  const handleToggleWatched = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (e?.stopPropagation) e.stopPropagation();
 
-  if (hasUserReview && isWatched) {
-    toast.error("You can’t unwatch a movie after reviewing it");
-    return;
-  }
+    if (hasUserReview && isWatched) {
+      toast.error("You can’t unwatch a movie after reviewing it");
+      return;
+    }
 
-  if (isFuture) {
-    toast.error("Cannot mark unreleased movies as watched");
-    return;
-  }
+    if (isFuture) {
+      toast.error("Cannot mark unreleased movies as watched");
+      return;
+    }
 
-  const wasWatched = isWatched;
+    const wasWatched = isWatched;
 
-  // Optimistic update
-  if (wasWatched) {
-    removeWatched(Number(tmdbId), mediaType);
-    toast.info("Removed from watched");
-  } else {
-    addWatched({
-      tmdbId: Number(tmdbId),
-      mediaType,
-      title,
-      poster_path: posterPath,
-      release_date: releaseDate,
-    });
-    toast.success("Marked as watched");
-  }
+    // Optimistic update
+    if (wasWatched) {
+      removeWatched(Number(tmdbId), mediaType);
+      toast.info("Removed from watched");
+    } else {
+      addWatched({
+        tmdbId: Number(tmdbId),
+        mediaType,
+        title,
+        poster_path: posterPath,
+        release_date: releaseDate,
+      });
+      toast.success("Marked as watched");
+    }
 
-  try {
-    const method = !wasWatched ? "POST" : "DELETE";
-    const res = await fetch("/api/watched", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdbId: Number(tmdbId), mediaType }),
-    });
+    try {
+      const method = !wasWatched ? "POST" : "DELETE";
+      const res = await fetch("/api/watched", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: Number(tmdbId), mediaType }),
+      });
 
-    if (!res.ok) throw new Error("Failed to update");
-  } catch (err) {
-    // revert
-    if (wasWatched) addWatched({ tmdbId: Number(tmdbId), mediaType });
-    else removeWatched(Number(tmdbId), mediaType);
+      if (!res.ok) throw new Error("Failed to update");
+    } catch (err) {
+      // revert
+      if (wasWatched) addWatched({ tmdbId: Number(tmdbId), mediaType });
+      else removeWatched(Number(tmdbId), mediaType);
 
-    console.error(err);
-    toast.error("Failed to update watched status");
-  }
-};
+      console.error(err);
+      toast.error("Failed to update watched status");
+    }
+  };
 
 
   const handleToggleInterested = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
-    
+
     const wasInterested = isInterested;
 
     // Optimistic Update
@@ -222,8 +249,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       removeInterested(Number(tmdbId), mediaType);
       toast.info("Removed from interested");
     } else {
-      addInterested({ 
-        tmdbId: Number(tmdbId), 
+      addInterested({
+        tmdbId: Number(tmdbId),
         mediaType,
         title,
         poster_path: posterPath,
@@ -245,7 +272,7 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       // Revert on error
       if (wasInterested) addInterested({ tmdbId: Number(tmdbId), mediaType });
       else removeInterested(Number(tmdbId), mediaType);
-      
+
       console.error(err);
       toast.error("Failed to update interested status");
     }
@@ -254,8 +281,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
   const handleToggleCollection = async (collectionId, isChecked) => {
     // Optimistic Update
     if (isChecked) {
-      addCollectionItem(collectionId, { 
-        tmdbId: Number(tmdbId), 
+      addCollectionItem(collectionId, {
+        tmdbId: Number(tmdbId),
         mediaType,
         title,
         poster_path: posterPath,
@@ -286,8 +313,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       if (isChecked) {
         removeCollectionItem(collectionId, Number(tmdbId), mediaType);
       } else {
-        addCollectionItem(collectionId, { 
-          tmdbId: Number(tmdbId), 
+        addCollectionItem(collectionId, {
+          tmdbId: Number(tmdbId),
           mediaType,
           title,
           poster_path: posterPath,
@@ -301,13 +328,13 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
 
   const handleCreateCollection = async () => {
     if (!session) {
-        toast.error("Please sign in to create collections", {
-            action: {
-                label: "Sign In",
-                onClick: () => window.location.href = "/login"
-            }
-        });
-        return;
+      toast.error("Please sign in to create collections", {
+        action: {
+          label: "Sign In",
+          onClick: () => window.location.href = "/login"
+        }
+      });
+      return;
     }
     if (!newCollectionName.trim()) return;
     setCreatingCollection(true);
@@ -325,11 +352,11 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
       if (res.ok) {
         const data = await res.json();
         const newCol = data.collection;
-        
+
         // Add to global store
         addCollection(newCol);
         setNewCollectionName("");
-        
+
         // Automatically add current item to the new collection
         await handleToggleCollection(newCol._id, true);
         toast.success(`Created collection "${newCollectionName}"`);
@@ -344,13 +371,13 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
 
   const handleAuthCheck = (action) => {
     if (!session) {
-        toast.error(`Please sign in to ${action}`, {
-            action: {
-                label: "Sign In",
-                onClick: () => window.location.href = "/login"
-            }
-        });
-        return false;
+      toast.error(`Please sign in to ${action}`, {
+        action: {
+          label: "Sign In",
+          onClick: () => window.location.href = "/login"
+        }
+      });
+      return false;
     }
     return true;
   };
@@ -367,8 +394,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
           }}
           className={`
             gap-2 transition-all duration-300 z-50 relative
-            ${isInterested 
-              ? "bg-yellow-500/50 hover:bg-yellow-600/60 text-white border-yellow-500" 
+            ${isInterested
+              ? "bg-yellow-500/50 hover:bg-yellow-600/60 text-white border-yellow-500"
               : "bg-black/40 border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white"
             }
           `}
@@ -399,8 +426,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
           }}
           className={`
             gap-2 transition-all duration-300 z-50 relative
-            ${isWatched 
-              ? "bg-purple-600/50 hover:bg-purple-700/60 text-white border-purple-500" 
+            ${isWatched
+              ? "bg-purple-600/50 hover:bg-purple-700/60 text-white border-purple-500"
               : "bg-black/40 border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white"
             }
           `}
@@ -440,7 +467,7 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
             {selectedCollections.size > 0 ? "Saved" : "Add"}
           </Button>
         </DialogTrigger>
-        
+
         <DialogContent className="bg-neutral-950 border-neutral-800 text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Save to Collection</DialogTitle>
@@ -454,8 +481,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
               onClick={handleToggleWatchlist}
               className={`
                 w-fit justify-start gap-2 transition-all duration-300
-                ${isWatchlist 
-                  ? "bg-purple-600/50 hover:bg-purple-700/60 text-white border-purple-500" 
+                ${isWatchlist
+                  ? "bg-purple-600/50 hover:bg-purple-700/60 text-white border-purple-500"
                   : "bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white"
                 }
               `}
@@ -488,8 +515,8 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
                   className="bg-neutral-800 border-neutral-700 text-white focus-visible:ring-purple-500 focus-visible:ring-1"
                 />
               </div>
-              <Button 
-                onClick={handleCreateCollection} 
+              <Button
+                onClick={handleCreateCollection}
                 disabled={creatingCollection || !newCollectionName.trim()}
                 size="icon"
                 className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
@@ -531,6 +558,61 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
                 ))
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* SHARE BUTTON */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 bg-black/40 border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white transition-all z-50 relative"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="bg-neutral-950 border-neutral-800 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share {mediaType === 'movie' ? 'Movie' : 'TV Show'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-6 py-4">
+            {/* Social Buttons */}
+            <div className="flex items-center justify-center gap-4">
+              <WhatsappShareButton url={getShareUrl()} title={getShareTitle()} separator=" - ">
+                <WhatsappIcon size={48} round />
+              </WhatsappShareButton>
+
+              <TwitterShareButton url={getShareUrl()} title={getShareTitle()}>
+                <XIcon size={48} round />
+              </TwitterShareButton>
+
+              <RedditShareButton url={getShareUrl()} title={getShareTitle()}>
+                <RedditIcon size={48} round />
+              </RedditShareButton>
+
+              <TelegramShareButton url={getShareUrl()} title={getShareTitle()}>
+                <TelegramIcon size={48} round />
+              </TelegramShareButton>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-neutral-800" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-neutral-900 px-2 text-neutral-500">Or copy link</span>
+              </div>
+            </div>
+
+            {/* Copy Link Button */}
+            <Button
+              onClick={copyLink}
+              className="w-full bg-white text-black hover:bg-neutral-200 gap-2"
+            >
+              <Link className="w-4 h-4" />
+              Copy Link
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -26,10 +26,11 @@ export async function GET(req) {
     if (type === "movie") endpoint = "/search/movie";
     if (type === "tv") endpoint = "/search/tv";
 
-    const url = `${TMDB_BASE_URL}${endpoint}?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`;
+    // We use en-US for metadata consistency, but region=IN to boost Indian content ranking
+    const url = `${TMDB_BASE_URL}${endpoint}?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&region=IN&page=1`;
 
     const res = await fetch(url, { headers });
-    
+
     if (!res.ok) {
       throw new Error(`TMDB API error: ${res.status}`);
     }
@@ -41,8 +42,8 @@ export async function GET(req) {
     if (type === "auto") {
       results = results.filter(item => item.media_type === "movie" || item.media_type === "tv");
     } else {
-        // For specific modes, TMDB returns correct types, but we can ensure media_type is set for client consistency
-        results = results.map(item => ({ ...item, media_type: type }));
+      // For specific modes, TMDB returns correct types, but we can ensure media_type is set for client consistency
+      results = results.map(item => ({ ...item, media_type: type }));
     }
 
     // Basic server-side filtering to reduce payload size

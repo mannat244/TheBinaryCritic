@@ -3,6 +3,7 @@
 import HotTrending from "@/components/HotTrending";
 import Navbar from "@/components/Navbar";
 import TBCWeeklyPicks from "@/components/TBCWeeklyPicks";
+import TopIndiaBuzz from "@/components/TopIndiaBuzz";
 import { GradientBackground } from "@/components/ui/gradient-background";
 
 export default function Home() {
@@ -26,7 +27,8 @@ export default function Home() {
       <div className="relative z-10">
         <Navbar />
         <HotTrending />
-        <TBCWeeklyPicks/>
+        <TopIndiaBuzz />
+        <TBCWeeklyPicks />
       </div>
     </div>
   );

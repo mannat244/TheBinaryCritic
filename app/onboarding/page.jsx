@@ -96,6 +96,18 @@ export default function OnboardingPage() {
     q5: [],
   });
 
+  /* ---------------------------
+     SELF-HEALING CHECK
+  ---------------------------- */
+  React.useEffect(() => {
+    // If session says completed, ensure we sync and redirect
+    if (session?.user?.onboardingCompleted) {
+      update({ onboardingCompleted: true }).then(() => {
+        window.location.href = "/";
+      });
+    }
+  }, [session, update]);
+
   const progressValue = ((step + 1) / QUESTIONS.length) * 100;
 
   /* ---------------------------

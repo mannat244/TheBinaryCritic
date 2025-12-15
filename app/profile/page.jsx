@@ -513,10 +513,10 @@ export default function ProfilePage() {
                 ) : (
                   <EmptyState
                     icon={List}
-                    title="Create Your First List"
-                    desc="Curate your favorite films into shareable collections."
-                    actionLabel="Create List"
-                    onAction={() => { }} // TODO: Add create list modal
+                    title="Time to curate"
+                    desc="Visit any movie or TV show page to create a list."
+                    actionLabel={null}
+                    onAction={() => { }}
                   />
                 )}
               </div>

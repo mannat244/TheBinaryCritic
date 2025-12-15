@@ -1,9 +1,10 @@
 "use client";
 
-import { Heart, Share2, Edit2 } from "lucide-react";
+import { Heart, Share2, Edit2, Trash2 } from "lucide-react"; // Added Trash2
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation"; // Added useRouter
 
 const VERDICTS = {
   masterpiece: {
@@ -38,13 +39,22 @@ export default function ReviewCardProfile({
   onLike,
   onEdit,
   onShare,
+  onDelete, // NEW
 }) {
+  const router = useRouter(); // NEW
   const movie = review.movie;
   const verdict = VERDICTS[review.verdict];
 
+  // Determine link target
+  const mediaType = review.mediaType || "movie"; // fallback
+  const mediaLink = `/${mediaType}/${review.mediaId}`;
+
   return (
-    <div className="relative max-w-3xl rounded-3xl border border-white/5 bg-neutral-950/60 backdrop-blur-md p-5 overflow-hidden">
-      
+    <div
+      className="relative max-w-3xl rounded-3xl border border-white/5 bg-neutral-950/60 backdrop-blur-md p-5 overflow-hidden transition-all hover:border-white/10"
+      onClick={() => router.push(mediaLink)} // Whole card clickable (optional, but convenient)
+    >
+
       {/* ✨ Soft Glow */}
       <div
         className={cn(
@@ -54,9 +64,15 @@ export default function ReviewCardProfile({
       />
 
       <div className="flex gap-5 relative z-10">
-        
-        {/* 🎬 Poster */}
-        <div className="w-24 h-36 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow-lg">
+
+        {/* 🎬 Poster (Clickable) */}
+        <div
+          className="w-24 h-36 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(mediaLink);
+          }}
+        >
           <img
             src={`https://image.tmdb.org/t/p/w300${movie.poster}`}
             alt={movie.title}
@@ -67,11 +83,17 @@ export default function ReviewCardProfile({
 
         {/* 📄 Content */}
         <div className="flex-1 flex flex-col justify-between">
-          
+
           {/* Header */}
           <div className="flex justify-between items-start gap-4">
             <div>
-              <h3 className="text-white font-bold text-lg leading-tight">
+              <h3
+                className="text-white font-bold text-lg leading-tight cursor-pointer hover:text-purple-400 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(mediaLink);
+                }}
+              >
                 {movie.title}
               </h3>
               <p className="text-xs text-neutral-500 mt-0.5">
@@ -107,7 +129,7 @@ export default function ReviewCardProfile({
               })}
             </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <Button
                 size="icon"
                 variant="ghost"
@@ -122,14 +144,29 @@ export default function ReviewCardProfile({
                 <Heart className={cn(isLiked && "fill-current")} />
               </Button>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => onEdit?.(review)}
-                className="h-8 w-8 rounded-full text-neutral-400 hover:text-white hover:bg-white/10"
-              >
-                <Edit2 />
-              </Button>
+              {/* Only show Edit if onEdit is provided (meaning verified author) */}
+              {onEdit && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onEdit?.(review)}
+                  className="h-8 w-8 rounded-full text-neutral-400 hover:text-white hover:bg-white/10"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+              )}
+
+              {/* Delete Button */}
+              {onDelete && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onDelete?.(review._id)}
+                  className="h-8 w-8 rounded-full text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
 
               <Button
                 size="icon"
@@ -137,7 +174,7 @@ export default function ReviewCardProfile({
                 onClick={onShare}
                 className="h-8 w-8 rounded-full text-neutral-400 hover:text-white hover:bg-white/10"
               >
-                <Share2 />
+                <Share2 className="w-4 h-4" />
               </Button>
             </div>
           </div>

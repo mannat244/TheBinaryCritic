@@ -32,7 +32,7 @@ const weeklyPicks = [
     platform: "Prime Video",
     url: "https://www.themoviedb.org/movie/1196364",
   },
- 
+
   {
     id: 1415974,
     title: "Raat Akeli Hai: The Bansal Murders",
@@ -55,18 +55,18 @@ const weeklyPicks = [
 
 
 export default function WeeklyPicks() {
-	return (
-		<div className="flex flex-col mt-10">
-			{/* Title */}
-			<h1 className="text-xl flex ml-5 font-bold bg-gradient-to-l from-neutral-50 via-neutral-200 to-neutral-300 text-transparent bg-clip-text">
-				<Sparkles className="text-neutral-50 my-auto mt-1 mr-2" />
-				TBC Weekly Picks
-			</h1>
+  return (
+    <div className="flex flex-col mt-10">
+      {/* Title */}
+      <h1 className="text-xl flex ml-5 font-bold bg-gradient-to-l from-neutral-50 via-neutral-200 to-neutral-300 text-transparent bg-clip-text">
+        <Sparkles className="text-neutral-50 my-auto mt-1 mr-2" />
+        TBC Weekly Picks
+      </h1>
 
-			{/* ROW WRAPPER */}
-			<div className="mx-5 mt-4 flex justify-center xl:justify-start">
-				<div
-					className="
+      {/* ROW WRAPPER */}
+      <div className="mx-5 mt-4 flex justify-center xl:justify-start">
+        <div
+          className="
             grid
             grid-cols-2
             xs:grid-cols-3
@@ -76,58 +76,58 @@ export default function WeeklyPicks() {
             gap-4
             pb-3
           "
-				>
-					{weeklyPicks.map((item, idx) => (
-						<div
-							key={item.id}
-							className="hover:bg-neutral-800/60 p-2 cursor-pointer rounded-xl transition-all flex flex-col w-fit"
-							onClick={() => {
-								if (item.media_type === "movie") {
-									window.location.href = `/movie/${item.id}`;
-								} else if (item.media_type === "tv") {
-									window.location.href = `/tv/${item.id}`;
-								}
-							}}
-						>
-							{/* Poster */}
-							<div className="relative w-auto h-56 rounded-lg overflow-hidden">
-								<Image
-									src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
-									alt={item.title}
-									height={100}
-									width={100}
-									className="h-full w-fit rounded-lg"
-									quality={70}
-									sizes="(max-width: 500px) 48vw,
+        >
+          {weeklyPicks.map((item, idx) => (
+            <div
+              key={item.id}
+              className="hover:bg-neutral-800/60 p-2 cursor-pointer rounded-xl transition-all flex flex-col w-fit"
+              onClick={() => {
+                if (item.media_type === "movie") {
+                  window.location.href = `/movie/${item.id}`;
+                } else if (item.media_type === "tv") {
+                  window.location.href = `/tv/${item.id}`;
+                }
+              }}
+            >
+              {/* Poster */}
+              <div className="relative w-auto h-56 rounded-lg overflow-hidden">
+                <Image
+                  src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                  alt={item.title}
+                  height={100}
+                  width={100}
+                  className="h-full w-fit rounded-lg"
+                  quality={70}
+                  sizes="(max-width: 500px) 48vw,
                          (max-width: 768px) 30vw,
                          (max-width: 1150px) 18vw,
                          12vw"
-								/>
-							</div>
+                />
+              </div>
 
-							{/* Title */}
-							<p className="mt-2 font-medium text-sm bg-gradient-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1">
-								{item.title.length > 17
-									? `${item.title.slice(0, 17)}...`
-									: item.title}
-							</p>
+              {/* Title */}
+              <p className="mt-2 font-medium text-sm bg-gradient-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1">
+                {item.title.length > 17
+                  ? `${item.title.slice(0, 17)}...`
+                  : item.title}
+              </p>
 
-							{/* Label */}
-							<p
-								className="
+              {/* Label */}
+              <p
+                className="
                 mt-0.5 font-medium text-xs
                 bg-gradient-to-r from-purple-300 via-neutral-800 to-purple-300
                 bg-[length:200%_100%] animate-[shimmer_2s_infinite]
                 text-transparent bg-clip-text
               "
-							>
-								{idx + 1}. Weekly Pick
-							</p>
-						</div>
-					))}
-				</div>
-			</div>
-			<div className="h-16 w-1"></div>
-		</div>
-	);
+              >
+                {idx + 1}. Weekly Pick
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="h-16 w-1"></div>
+    </div>
+  );
 }

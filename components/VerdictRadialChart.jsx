@@ -17,8 +17,11 @@ export default function VerdictRadialChart({
   voteCount = 0,
 }) {
   const tbcReviews = stats?.totalReviews || 0;
-  const hasTBC = tbcReviews >= 5;
   const hasTMDB = voteCount > 0 && voteAvg > 0;
+  // Show TBC if:
+  // 1. We have enough reviews (>= 5) - High Confidence override
+  // 2. We have ANY reviews (> 0) AND TMDB is missing - Low Confidence fallback
+  const hasTBC = tbcReviews >= 5 || (tbcReviews > 0 && !hasTMDB);
 
   /* ----------------------------------
      CASE 1: USE TBC DATA
@@ -29,12 +32,19 @@ export default function VerdictRadialChart({
     const total =
       v.masterpiece + v.worth_it + v.it_depends + v.skip_it || 1;
 
-    const score = Math.round(
-      ((v.masterpiece + v.worth_it) / total) * 100
-    );
+    // Dominant Verdict Logic
+    // Sorter: Find the category with the most votes
+    // We filter using the keys we know to avoid stray data
+    const sortedVerdicts = ["masterpiece", "worth_it", "it_depends", "skip_it"]
+      .map(key => ({ key, count: v[key] || 0 }))
+      .sort((a, b) => b.count - a.count);
 
-    const dominantKey =
-      Object.entries(v).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const dominantItem = sortedVerdicts[0];
+    const dominantKey = dominantItem.key;
+    const dominantCount = dominantItem.count;
+
+    // Score is simply the % of the dominant verdict
+    const score = Math.round((dominantCount / total) * 100);
 
     const dominant = VERDICTS[dominantKey];
 
@@ -119,73 +129,73 @@ export default function VerdictRadialChart({
     );
   }
 
- /* ----------------------------------
-   CASE 2: FALLBACK TO TMDB
----------------------------------- */
-if (hasTMDB) {
-  const score = Math.round((voteAvg / 10) * 100);
+  /* ----------------------------------
+    CASE 2: FALLBACK TO TMDB
+ ---------------------------------- */
+  if (hasTMDB) {
+    const score = Math.round((voteAvg / 10) * 100);
 
-  const data = [{ value: score }];
+    const data = [{ value: score }];
 
-  return (
-    <Card className="bg-black border-white/10">
-      <CardHeader className="pb-2">
-        <h3 className="text-lg font-semibold text-white">
-          TMDB Rating
-        </h3>
-      </CardHeader>
+    return (
+      <Card className="bg-black border-white/10">
+        <CardHeader className="pb-2">
+          <h3 className="text-lg font-semibold text-white">
+            TMDB Rating
+          </h3>
+        </CardHeader>
 
-      <CardContent className="flex flex-col items-center justify-center min-h-[260px]">
-        <RadialBarChart
-          width={260}
-          height={200}
-          data={data}
-          innerRadius={85}
-          outerRadius={120}
-          startAngle={180}
-          endAngle={0}
-        >
-          <PolarRadiusAxis tick={false} axisLine={false}>
-            <Label
-              content={({ viewBox }) => (
-                <text
-                  x={viewBox.cx}
-                  y={viewBox.cy}
-                  textAnchor="middle"
-                >
-                  <tspan
-                    className="fill-purple-400 text-4xl font-bold"
+        <CardContent className="flex flex-col items-center justify-center min-h-[260px]">
+          <RadialBarChart
+            width={260}
+            height={200}
+            data={data}
+            innerRadius={85}
+            outerRadius={120}
+            startAngle={180}
+            endAngle={0}
+          >
+            <PolarRadiusAxis tick={false} axisLine={false}>
+              <Label
+                content={({ viewBox }) => (
+                  <text
                     x={viewBox.cx}
-                    dy={-2}
+                    y={viewBox.cy}
+                    textAnchor="middle"
                   >
-                    {score}%
-                  </tspan>
-                  <tspan
-                    x={viewBox.cx}
-                    dy={26}
-                    className="fill-neutral-300 text-sm"
-                  >
-                    Audience Approval
-                  </tspan>
-                </text>
-              )}
+                    <tspan
+                      className="fill-purple-400 text-4xl font-bold"
+                      x={viewBox.cx}
+                      dy={-2}
+                    >
+                      {score}%
+                    </tspan>
+                    <tspan
+                      x={viewBox.cx}
+                      dy={26}
+                      className="fill-neutral-300 text-sm"
+                    >
+                      Audience Approval
+                    </tspan>
+                  </text>
+                )}
+              />
+            </PolarRadiusAxis>
+
+            <RadialBar
+              dataKey="value"
+              fill="#a855f7"
+              cornerRadius={8}
             />
-          </PolarRadiusAxis>
+          </RadialBarChart>
 
-          <RadialBar
-            dataKey="value"
-            fill="#a855f7"
-            cornerRadius={8}
-          />
-        </RadialBarChart>
-
-        <p className="mt-3 text-xs text-neutral-500">
-          Based on {voteCount.toLocaleString()} TMDB votes
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
+          <p className="mt-3 text-xs text-neutral-500">
+            Based on {voteCount.toLocaleString()} TMDB votes
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
 
   /* ----------------------------------
@@ -198,14 +208,14 @@ if (hasTMDB) {
           Verdict Pending
         </h3>
       </CardHeader>
-       
+
       <CardContent className="text-center relative -top-3 flex-col flex my-auto justify-center items-center text-sm text-neutral-400">
-         <div className="w-10 mb-2 h-10 flex items-center justify-center bg-neutral-900 rounded-full">
-             <Star/>
-         </div>
-        
-         
-         Not enough data yet.
+        <div className="w-10 mb-2 h-10 flex items-center justify-center bg-neutral-900 rounded-full">
+          <Star />
+        </div>
+
+
+        Not enough data yet.
         <br />
         Be among the first to review.
       </CardContent>

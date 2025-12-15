@@ -17,6 +17,7 @@ export async function GET(req) {
 
     const reviews = await Review.find({ userId })
       .sort({ createdAt: -1 })
+      .populate("userId", "name avatar") // 🔥 POPULATE USER INFO
       .lean();
 
     // 🔥 HYDRATE MOVIE DATA

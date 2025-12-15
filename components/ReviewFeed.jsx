@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { Heart, Share2, Flame, Check, Eye, XCircle, Users, Sliders, Edit2, ChevronDown, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,14 @@ import { toast } from "sonner";
 import { toPng } from 'html-to-image';
 import { Montserrat } from "next/font/google";
 import ReviewCard from "./ReviewCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Heart, Share2, Flame, Check, Eye, XCircle, Users, Sliders, Edit2, ChevronDown, Download, Copy } from "lucide-react";
+import {
+  WhatsappShareButton, WhatsappIcon,
+  TwitterShareButton, XIcon,
+  RedditShareButton, RedditIcon,
+  TelegramShareButton, TelegramIcon
+} from "react-share";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -133,29 +140,59 @@ export default function ReviewFeed({
 
   const isProfile = variant === "profile";
 
-
-
-  const handleShare = async (review) => {
+  const handleShare = (review) => {
     setSharingReview(review);
-    // Allow state to update and render the hidden card
-    setTimeout(async () => {
-      if (shareRef.current) {
-        try {
-          await document.fonts.ready;
-          const dataUrl = await toPng(shareRef.current, { cacheBust: true });
-          const link = document.createElement('a');
-          link.download = `review-${review._id}.png`;
-          link.href = dataUrl;
-          link.click();
-          toast.success("Review image generated!");
-        } catch (err) {
-          console.error("Failed to generate image", err);
-          toast.error("Failed to generate image");
-        } finally {
-          setSharingReview(null);
-        }
+  };
+
+  const copyImageToClipboard = async () => {
+    if (shareRef.current) {
+      try {
+        await document.fonts.ready;
+        const dataUrl = await toPng(shareRef.current, { cacheBust: true });
+        const blob = await (await fetch(dataUrl)).blob();
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob
+          })
+        ]);
+        toast.success("Image copied to clipboard!");
+      } catch (err) {
+        console.error("Failed to copy image", err);
+        toast.error("Failed to copy image");
       }
-    }, 100);
+    }
+  };
+
+  const downloadImage = async () => {
+    if (shareRef.current) {
+      try {
+        await document.fonts.ready;
+        const dataUrl = await toPng(shareRef.current, { cacheBust: true });
+        const link = document.createElement('a');
+        link.download = `review-${sharingReview._id}.png`;
+        link.href = dataUrl;
+        link.click();
+        toast.success("Image saved to device!");
+      } catch (err) {
+        console.error("Failed to generate image", err);
+        toast.error("Failed to generate image");
+      }
+    }
+  };
+
+  // Helper to get share URL
+  const getShareUrl = (review) => {
+    if (typeof window === 'undefined') return "";
+    const type = review.mediaType || (review.movie ? 'movie' : 'tv');
+    const id = review.mediaId || review.movie?.tmdbId;
+    return `${window.location.origin}/${type}/${id}`;
+  };
+
+  const getShareTitle = (review) => {
+    const title = review.movie?.title || review.movie?.name || media?.title || media?.name || "this movie";
+    const verdictLabel = VERDICTS.find(v => v.id === review.verdict)?.label || review.verdict;
+    return `Check out my verdict on ${title}: ${verdictLabel}!`;
   };
 
   const handleUpdate = async (originalReview, data) => {
@@ -182,10 +219,44 @@ export default function ReviewFeed({
 
     } catch (error) {
       console.error("Failed to update review:", error);
-      alert("Failed to update review");
+      toast.error("Failed to update review");
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleDelete = (reviewId) => {
+    toast("Are you sure you want to delete this review?", {
+      description: "This action cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          // Optimistic UI
+          const previousReviews = localReviews;
+          setLocalReviews(prev => prev.filter(r => r._id !== reviewId));
+
+          try {
+            const res = await fetch("/api/review/delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reviewId }),
+            });
+
+            if (!res.ok) throw new Error("Failed to delete");
+
+            toast.success("Review deleted");
+          } catch (error) {
+            console.error("Delete failed", error);
+            toast.error("Failed to delete review");
+            setLocalReviews(previousReviews); // Rollback
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+      },
+      duration: 5000,
+    });
   };
 
   const handleLike = async (reviewId) => {
@@ -285,7 +356,7 @@ export default function ReviewFeed({
         const isAuthor =
           session?.user?.id &&
           review.userId?._id &&
-          session.user.id === review.userId._id;
+          session.user.id === review.userId._id.toString();
 
         const isLiked = review.likes?.includes(session?.user?.id);
 
@@ -325,6 +396,7 @@ export default function ReviewFeed({
               isLiked={isLiked}
               onLike={handleLike}
               onEdit={isAuthor ? () => setEditingId(review._id) : null}
+              onDelete={isAuthor ? () => handleDelete(review._id) : null}
               onShare={() => handleShare(review)}
             />
           );
@@ -529,8 +601,70 @@ export default function ReviewFeed({
         </Pagination>
       )}
 
-      {/* Hidden Share Card */}
-      {sharingReview && media && (
+      {/* Share Dialog */}
+      <Dialog open={!!sharingReview} onOpenChange={(open) => !open && setSharingReview(null)}>
+        <DialogContent className="sm:max-w-md bg-neutral-900 border-neutral-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Share Verdict</DialogTitle>
+            <DialogDescription className="text-neutral-400">
+              Share this review with your friends.
+            </DialogDescription>
+          </DialogHeader>
+
+          {sharingReview && (
+            <div className="flex flex-col gap-6 py-4">
+              {/* Social Buttons */}
+              <div className="flex items-center justify-center gap-4">
+                <WhatsappShareButton url={getShareUrl(sharingReview)} title={getShareTitle(sharingReview)} separator=" - ">
+                  <WhatsappIcon size={48} round />
+                </WhatsappShareButton>
+
+                <TwitterShareButton url={getShareUrl(sharingReview)} title={getShareTitle(sharingReview)}>
+                  <XIcon size={48} round />
+                </TwitterShareButton>
+
+                <RedditShareButton url={getShareUrl(sharingReview)} title={getShareTitle(sharingReview)}>
+                  <RedditIcon size={48} round />
+                </RedditShareButton>
+
+                <TelegramShareButton url={getShareUrl(sharingReview)} title={getShareTitle(sharingReview)}>
+                  <TelegramIcon size={48} round />
+                </TelegramShareButton>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-neutral-800" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-neutral-900 px-2 text-neutral-500">Or download image</span>
+                </div>
+              </div>
+
+              {/* Image Actions */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={copyImageToClipboard}
+                  className="flex-1 bg-white text-black hover:bg-neutral-200 gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Image
+                </Button>
+                <Button
+                  onClick={downloadImage}
+                  className="flex-1 bg-neutral-800 text-white hover:bg-neutral-700 gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Save Image
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden Share Card (For Image Generation) */}
+      {sharingReview && (media || sharingReview.movie) && (
         <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none">
           <div
             ref={shareRef}
@@ -558,18 +692,18 @@ export default function ReviewFeed({
             <div className="flex gap-6 items-center relative z-10">
               <div className="w-24 h-36 shrink-0 rounded-lg overflow-hidden shadow-2xl border border-white/10">
                 <img
-                  src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
-                  alt={media.title || media.name}
+                  src={`https://image.tmdb.org/t/p/w500${media ? media.poster_path : sharingReview.movie?.poster}`}
+                  alt={media ? (media.title || media.name) : sharingReview.movie?.title}
                   className="w-full h-full object-cover"
                   crossOrigin="anonymous"
                 />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white leading-tight mb-1">
-                  {media.title || media.name}
+                  {media ? (media.title || media.name) : sharingReview.movie?.title}
                 </h2>
                 <p className="text-neutral-400 text-lg">
-                  {new Date(media.release_date || media.first_air_date).getFullYear()}
+                  {media ? new Date(media.release_date || media.first_air_date).getFullYear() : sharingReview.movie?.year}
                 </p>
               </div>
             </div>
