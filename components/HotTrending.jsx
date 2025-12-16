@@ -106,8 +106,8 @@ const HotTrending = () => {
             {loading
               ? skeletonItems.map((_, idx) => (
                 <div key={idx} className="p-2 rounded-xl flex flex-col w-fit">
-                  <div className="relative w-36 h-56 rounded-lg overflow-hidden bg-neutral-800/50 animate-pulse" />
-                  <div className="mt-2 h-3 w-24 rounded-full bg-neutral-800/50 animate-pulse" />
+                  <div className="relative w-28 h-40 xl:w-36 xl:h-56 rounded-lg overflow-hidden bg-neutral-800/50 animate-pulse" />
+                  <div className="mt-2 h-3 w-24 xl:w-28 rounded-full bg-neutral-800/50 animate-pulse" />
                   <div className="mt-1 h-2 w-12 rounded-full bg-neutral-800/40 animate-pulse" />
                 </div>
               ))
