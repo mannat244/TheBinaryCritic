@@ -314,7 +314,11 @@ export default function Page() {
         {/* Backdrop Image */}
         {movie.backdrop_path ? (
           <Image
-            src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+            src={
+              movie.backdrop_path.startsWith('https://')
+                ? movie.backdrop_path
+                : `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
+            }
             alt={movie.title}
             fill
             className="object-cover object-top opacity-80"
