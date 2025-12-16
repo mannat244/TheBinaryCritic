@@ -55,46 +55,51 @@ export const authOptions = {
 
   callbacks: {
     // ⭐ MERGE GOOGLE + EMAIL ACCOUNTS
-    async signIn({ user, account }) {
-      await connectDB();
+   async signIn({ user, account }) {
+  await connectDB();
 
-      if (account.provider === "google") {
-        const existing = await User.findOne({ email: user.email });
+  if (account.provider === "google") {
+    let dbUser = await User.findOne({ email: user.email });
 
-        if (!existing) {
-          // Create user from Google login
-          await User.create({
-            name: user.name,
-            email: user.email,
-            avatar: user.image,
-            provider: "google",
-            onboardingCompleted: false, // New users need onboarding
-          });
-        }
-      }
+    if (!dbUser) {
+      dbUser = await User.create({
+        name: user.name,
+        email: user.email,
+        avatar: user.image,
+        provider: "google",
+        onboardingCompleted: false,
+      });
+    }
 
-      return true;
-    },
+    // 🔥 CRITICAL FIX
+    user.id = dbUser._id.toString();
+  }
+
+  return true;
+   },
 
     // ⭐ MAIN FIX → ALWAYS USE MongoDB _id, NOT GOOGLE PROFILE ID
-    async jwt({ token, user, trigger, session }) {
-      // Initial Sign In
-      if (user) {
-        await connectDB();
-        const dbUser = await User.findOne({ email: user.email });
-        if (dbUser) {
-          token.id = dbUser._id.toString();
-          token.onboardingCompleted = dbUser.onboardingCompleted;
-        }
-      }
+   async jwt({ token, user, trigger, session }) {
+  if (user?.id) {
+    token.id = user.id;
+  }
 
-      // Handle session update (allows client to update token after onboarding)
-      if (trigger === "update" && session?.onboardingCompleted !== undefined) {
-        token.onboardingCompleted = session.onboardingCompleted;
-      }
+  if (!token.id && token.email) {
+    await connectDB();
+    const dbUser = await User.findOne({ email: token.email });
+    if (dbUser) {
+      token.id = dbUser._id.toString();
+      token.onboardingCompleted = dbUser.onboardingCompleted;
+    }
+  }
 
-      return token;
-    },
+  if (trigger === "update" && session?.onboardingCompleted !== undefined) {
+    token.onboardingCompleted = session.onboardingCompleted;
+  }
+
+  return token;
+}
+,
 
     // ⭐ MAKE USER ID AVAILABLE IN SESSION
     async session({ session, token }) {

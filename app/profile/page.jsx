@@ -57,6 +57,15 @@ export default function ProfilePage() {
     setWatched, setWatchlist, setCollections, setInterested
   } = useMediaStore();
 
+  const user = userProfile || session?.user;
+
+useEffect(() => {
+  if (user && (user.name || user.username)) {
+    document.title = `${user.name || user.username} | The Binary Critic`;
+  }
+}, [user]);
+
+
   // Get latest watched movie for header background
   const latestWatched = watched && watched.length > 0 ? watched[watched.length - 1] : null;
   const headerImage = latestWatched?.backdrop_path
@@ -133,13 +142,7 @@ export default function ProfilePage() {
   // Merge session user with fetched user data to ensure we have the latest avatar/bio
   // but fallback to session image if avatar is missing in DB (e.g. Google login)
   // Priority: Cached Profile -> Session -> null
-  const user = userProfile || session?.user;
-  // Set document title to user name
-  useEffect(() => {
-    if (user && (user.name || user.username)) {
-      document.title = `${user.name || user.username} | The Binary Critic`;
-    }
-  }, [user]);
+
   // If we have a cached profile, we merge session data just in case, but profile takes precedence for bio/avatar
   // If loading and no cached profile, we force null to show skeletons instead of stale session data
   const displayUser = (isProfileLoading && !userProfile) ? null : (userProfile ? { ...session?.user, ...userProfile } : session?.user);
