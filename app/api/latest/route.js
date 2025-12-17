@@ -8,7 +8,7 @@ import TrendingCache from "@/models/TrendingCache";
 // -------------------------------------------------------------
 const TMDB_API_KEY = process.env.TMDB_API_READ_ACCESS_TOKEN;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 Hours
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 Minutes
 
 const genAI = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
 
@@ -61,71 +61,231 @@ async function fetchTMDBDetails(title, year, type) {
 // 2. GEMINI FETCH HELPER (Smart Buzz Logic)
 // -------------------------------------------------------------
 async function fetchGeminiTrends() {
-    const modelId = "gemini-2.5-flash";
+    // const modelId = "gemini-2.5-flash"; // REMOVED: Managed dynamically in loop
     const today = new Date().toLocaleDateString();
 
     const SYSTEM_PROMPT = `
-You are an entertainment news tracker for India.
-USE GOOGLE SEARCH to find what is *actually* trending TODAY (${today}).
+You are TBC’s REAL-TIME ENTERTAINMENT TREND EDITOR for INDIA.
 
-CORE TASK:
-Identify 7-10 Movies/Web Series buzzing in India right now.
-For each item, determine the *reason* for the buzz and format the "subtext" accordingly.
+TODAY’S DATE: ${today}
 
-🛑 RULES FOR "SUBTEXT":
-- **If Box Office Hit:** You MUST include the latest number. (e.g., "Smashed ₹500 Cr Worldwide", "Highest Opener of 2024")
-- **If Trailer Drop:** Just mention the event. (e.g., "Trailer released today", "Trending #1 on YouTube")
-- **If OTT Release:** Mention the platform. (e.g., "Streaming now on Netflix", "Just Arrived")
-- **NO FAKE NUMBERS:** If a movie is unreleased (2025/2026), DO NOT invent a box office number. Just say "Releasing Soon".
+You MUST use GOOGLE SEARCH as the ONLY discovery source.
+Do NOT rely on memory, popularity, or famous franchises.
 
-📦 OUTPUT FORMAT (JSON Array):
+You MUST ONLY consider buzz from the LAST 5 DAYS (±5 days).
+Anything older → DISCARD.
+
+━━━━━━━━━━━━━━━━━━
+CORE OBJECTIVE
+━━━━━━━━━━━━━━━━━━
+Discover UP TO 18 MOVIES or TV / WEB SERIES
+that are ACTIVELY BUZZING IN INDIA RIGHT NOW
+based STRICTLY on recent search and news signals.
+
+Over-generate candidates.
+Downstream systems will prune this list to 10–12.
+
+━━━━━━━━━━━━━━━━━━
+🚫 CONTROVERSY POLICY (STRICT)
+━━━━━━━━━━━━━━━━━━
+DISALLOWED:
+• Scandals
+• Bans
+• Backlash
+• Outrage
+• Actor-related issues
+• AI edits / deepfakes
+• Plot leaks
+
+ALLOWED (ONLY THIS):
+✅ Trailer / teaser CLIP leaks
+   (short video clips, teaser snippets, preview footage)
+
+If the buzz reason is NOT one of the allowed cases
+→ DISCARD.
+
+━━━━━━━━━━━━━━━━━━
+ALLOWED BUZZ TYPES (ONLY THESE)
+━━━━━━━━━━━━━━━━━━
+A title may be included ONLY if buzz is due to:
+
+✅ Trailer / teaser / first look release  
+✅ Trailer / teaser CLIP leak  
+✅ Official announcement (release date, casting, certification)  
+✅ OTT release (this week)  
+✅ Box office performance (fresh ≤5 days)
+
+━━━━━━━━━━━━━━━━━━
+ANTI-BIAS DISCOVERY RULE
+━━━━━━━━━━━━━━━━━━
+• Do NOT search for specific franchises
+• Do NOT assume popularity
+• Include a title ONLY if current search results
+  show active discussion
+
+━━━━━━━━━━━━━━━━━━
+HARD RENDERING CONSTRAINT
+━━━━━━━━━━━━━━━━━━
+Include ONLY items that map to a:
+• Movie page
+• TV / Web series page
+
+If it cannot open a content page → DISCARD.
+
+━━━━━━━━━━━━━━━━━━
+TITLE RULE (DEDUP SAFE)
+━━━━━━━━━━━━━━━━━━
+• Use FULL OFFICIAL TITLE only
+• No abbreviations
+• No franchise-only names
+• No actor names
+
+If a buzz cannot be mapped to ONE specific title
+→ DISCARD.
+
+━━━━━━━━━━━━━━━━━━
+OTT RULES (IMPORTANT)
+━━━━━━━━━━━━━━━━━━
+• MAX 3 OTT titles
+• OTT INDIA:
+  – Always allowed if widely discussed
+• OTT GLOBAL:
+  – Include ONLY if clearly trending in India
+• Routine releases → DISCARD
+
+━━━━━━━━━━━━━━━━━━
+SUPERHERO / GLOBAL FRANCHISE RULE
+━━━━━━━━━━━━━━━━━━
+Superhero or global franchise titles may be included ONLY IF:
+• Trailer / teaser dropped OR clip leaked
+• OR official announcement occurred
+• AND Indian search/news discussion is visible
+
+Otherwise → DISCARD.
+
+━━━━━━━━━━━━━━━━━━
+BOX OFFICE RULES (STRICT)
+━━━━━━━━━━━━━━━━━━
+• ONLY fresh numbers (≤5 days)
+• NO lifetime totals
+• NO guessing
+• Unreleased titles → NO numbers
+
+━━━━━━━━━━━━━━━━━━
+SUBTEXT RULES (MAX 3 WORDS)
+━━━━━━━━━━━━━━━━━━
+Choose ONE neutral reason.
+
+Examples:
+• "Trailer dropped"
+• "Teaser clip leak"
+• "First look"
+• "Release announced"
+• "Now streaming Netflix"
+• "Weekend ₹120 Cr"
+
+━━━━━━━━━━━━━━━━━━
+OUTPUT FORMAT (STRICT JSON ONLY)
+━━━━━━━━━━━━━━━━━━
 [
   {
-    "title": "Pushpa 2",
-    "year": 2024,
-    "type": "movie",
-    "buzz_type": ["Box Office"],
-    "subtext": "Crossed ₹1000 Cr mark worldwide" 
-  },
-  {
-    "title": "Supergirl: Woman of Tomorrow",
-    "year": 2026,
-    "type": "movie",
-    "buzz_type": ["Trailer Drop"],
-    "subtext": "First look trailer released"
+    "title": "",
+    "year": 2025,
+    "type": "movie | tv",
+    "buzz_type": [
+      "Trailer Drop | Announcement | OTT Release | Box Office"
+    ],
+    "subtext": ""
   }
 ]
-`;
 
-    try {
-        const response = await genAI.models.generateContent({
-            model: modelId,
-            contents: [
-                {
-                    role: "user",
-                    parts: [{ text: "Search for trending entertainment news in India today. Identify Box Office hits (get numbers), new OTT releases, and viral Hollywood/Indian trailers. Return JSON only." }]
+━━━━━━━━━━━━━━━━━━
+🧠 VERIFICATION CHECKLIST (MANDATORY)
+━━━━━━━━━━━━━━━━━━
+Before including ANY item, ALL checks below MUST pass:
+
+[ ] Is this a MOVIE or TV / WEB SERIES?
+[ ] Is the buzz from the LAST 5 DAYS?
+[ ] Is the buzz due to an ALLOWED BUZZ TYPE?
+[ ] If a leak, is it a TRAILER / TEASER CLIP (not plot/controversy)?
+[ ] Does this title have CURRENT discussion in INDIA?
+[ ] If OTT:
+      - India release OR
+      - Global release trending in India?
+[ ] If Superhero / Global franchise:
+      - Trailer or clip present?
+      - Indian discussion visible?
+[ ] Does the title map to ONE specific content page?
+[ ] Is the title written in FULL official form?
+[ ] Was this included due to SEARCH DATA (not assumption)?
+
+If ANY checkbox fails → DISCARD THE ITEM.
+
+━━━━━━━━━━━━━━━━━━
+FINAL EDITOR CHECK
+━━━━━━━━━━━━━━━━━━
+Ask:
+“Would this appear today on an Indian entertainment homepage
+for its CONTENT, not controversy?”
+
+If NO → REMOVE IT.`;
+
+
+    // 🚀 Fallback Models (Ordered by Speed/Cost -> Power)
+    // We skip 'Lite' models & older models as per user request.
+    const FALLBACK_MODELS = [
+        "gemini-2.5-flash",       // Primary: Fast & Balanced
+        "gemini-2.0-flash",       // Fallback 1: Very reliable
+        "gemini-3-flash-preview", // Fallback 2: Newest fast model
+        "gemini-2.5-pro"          // Fallback 3: Stronger reasoning (slower but good last resort)
+    ];
+
+    for (let i = 0; i < FALLBACK_MODELS.length; i++) {
+        const currentModel = FALLBACK_MODELS[i];
+
+        try {
+            console.log(`🤖 Attempt ${i + 1}/${FALLBACK_MODELS.length}: Using ${currentModel}...`);
+
+            const response = await genAI.models.generateContent({
+                model: currentModel,
+                contents: [
+                    {
+                        role: "user",
+                        parts: [{ text: "Search for trending entertainment news in India today. Identify Box Office hits (get numbers), new OTT releases, and viral Hollywood/Indian trailers. Return JSON only." }]
+                    }
+                ],
+                config: {
+                    systemInstruction: SYSTEM_PROMPT,
+                    tools: [{ googleSearch: {} }],
+                },
+            });
+
+            if (response?.text) {
+                // 🧹 Clean up markdown or conversational filler
+                let cleanText = response.text.replace(/```json|```/g, "");
+                const firstBracket = cleanText.indexOf('[');
+                const lastBracket = cleanText.lastIndexOf(']');
+
+                if (firstBracket !== -1 && lastBracket !== -1) {
+                    cleanText = cleanText.substring(firstBracket, lastBracket + 1);
+                    console.log(`✅ Success with ${currentModel}`);
+                    return JSON.parse(cleanText);
                 }
-            ],
-            config: {
-                systemInstruction: SYSTEM_PROMPT,
-                tools: [{ googleSearch: {} }],
-            },
-        });
-
-        if (response?.text) {
-            // 🧹 Clean up markdown or conversational filler
-            let cleanText = response.text.replace(/```json|```/g, "");
-            const firstBracket = cleanText.indexOf('[');
-            const lastBracket = cleanText.lastIndexOf(']');
-
-            if (firstBracket !== -1 && lastBracket !== -1) {
-                cleanText = cleanText.substring(firstBracket, lastBracket + 1);
-                return JSON.parse(cleanText);
             }
+            // If we get here, the response was weird. Usually we might retry, but let's try next model.
+
+        } catch (error) {
+            console.error(`⚠️ Error with ${currentModel}:`, error.message);
+
+            // If it's the last model, return empty
+            if (i === FALLBACK_MODELS.length - 1) {
+                console.error("❌ All fallback models failed.");
+                return [];
+            }
+
+            // Small delay before switching models to be polite to the API rate limiter
+            await new Promise(res => setTimeout(res, 1000));
         }
-    } catch (error) {
-        console.error("⚠️ Gemini Trend Fetch Error:", error.message);
-        return [];
     }
     return [];
 }

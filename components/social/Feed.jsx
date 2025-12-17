@@ -20,7 +20,7 @@ export default function Feed({ initialPosts, communityId }) {
         <div>
             <CreatePost communityId={communityId} onSuccess={handlePostSuccess} />
 
-            <div className="space-y-4">
+            <div className="space-y-4 mb-12">
                 {posts.length === 0 ? (
                     <div className="text-center py-20 bg-zinc-900/30 rounded-xl border border-dashed border-zinc-800">
                         <p className="text-zinc-500 text-lg">No posts yet. Be the first to start the conversation!</p>
