@@ -43,7 +43,7 @@ export default async function CommunityPage() {
       <div className="relative z-10">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 mt-14 sm:px-6 lg:px-8 py-16">
+        <main className="max-w-7xl mx-auto px-4 pt-24 sm:px-6 lg:px-8 pb-24 md:pb-16">
           <div className="mb-14 text-center md:text-left">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight">
               Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Circle</span>

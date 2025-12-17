@@ -9,12 +9,22 @@ import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link"; // Add import link
 
+import { useRouter } from "next/navigation";
+
 export default function CommunityCard({ community, isJoined: initialJoined }) {
+    const router = useRouter();
     const [isJoined, setIsJoined] = useState(initialJoined);
     const [memberCount, setMemberCount] = useState(community.membersCount || 0);
     const [loading, setLoading] = useState(false);
 
-    const handleToggle = async () => {
+    const handleCardClick = (e) => {
+        // Allow text selection
+        if (window.getSelection()?.toString()) return;
+        router.push(`/community/${community.slug}`);
+    };
+
+    const handleToggle = async (e) => {
+        e.stopPropagation();
         if (loading) return;
 
         // Optimistic Update
@@ -50,10 +60,13 @@ export default function CommunityCard({ community, isJoined: initialJoined }) {
     };
 
     return (
-        <Card className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-violet-500/30 transition-all duration-300 h-64 md:h-72 lg:h-80 w-full flex flex-col justify-end">
+        <Card
+            onClick={handleCardClick}
+            className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-violet-500/30 transition-all duration-300 h-64 md:h-72 lg:h-80 w-full flex flex-col justify-end cursor-pointer"
+        >
 
-            {/* Background Image Link */}
-            <Link href={`/community/${community.slug}`} className="absolute inset-0 z-0 cursor-pointer">
+            {/* Background Image */}
+            <div className="absolute inset-0 z-0">
                 {community.image && (
                     <Image
                         src={community.image}
@@ -63,14 +76,12 @@ export default function CommunityCard({ community, isJoined: initialJoined }) {
                     />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-            </Link>
+            </div>
 
-            <div className="relative z-10 p-5 h-full flex flex-col justify-end pointer-events-none">
-
-                {/* Pointer events need to be re-enabled for interactive children */}
+            <div className="relative z-10 p-5 h-full flex flex-col justify-end">
 
                 {/* Badge & Join Status */}
-                <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto">
+                <div className="absolute -top-1 right-4 flex gap-2">
                     {isJoined && (
                         <Badge className="bg-violet-600/90 text-white border-none shadow-lg backdrop-blur-sm">
                             <Check className="w-3 h-3 mr-1" /> Member
@@ -78,20 +89,12 @@ export default function CommunityCard({ community, isJoined: initialJoined }) {
                     )}
                 </div>
 
-                <div className="absolute top-4 left-4 pointer-events-auto">
-                    <Badge variant="outline" className="bg-black/40 capitalize text-medium backdrop-blur-md text-xs text-white border-white/20">
-                        {community.type}
-                    </Badge>
-                </div>
-
 
                 {/* Content */}
-                <div className="mb-4 pointer-events-auto">
-                    <Link href={`/community/${community.slug}`} className="block group/title">
-                        <h3 className="text-xl font-bold text-white mb-1 group-hover/title:text-violet-400 transition-colors drop-shadow-md">
-                            {community.name}
-                        </h3>
-                    </Link>
+                <div className="mb-4">
+                    <h3 className="text-xl font-bold text-white mb-1 group-hover/title:text-violet-400 transition-colors drop-shadow-md">
+                        {community.name}
+                    </h3>
                     <p className="text-xs font-bold text-violet-300 mb-2 uppercase tracking-wide drop-shadow-sm">
                         {community.subtext}
                     </p>
@@ -101,7 +104,7 @@ export default function CommunityCard({ community, isJoined: initialJoined }) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/10 pointer-events-auto">
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
                     <div className="flex items-center text-zinc-300 text-xs font-medium backdrop-blur-sm bg-black/20 px-2 py-1 rounded-full">
                         <Users className="w-3.5 h-3.5 mr-1.5" />
                         {memberCount.toLocaleString()}

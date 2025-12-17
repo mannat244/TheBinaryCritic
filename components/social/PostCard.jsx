@@ -35,10 +35,8 @@ export default function PostCard({ post, onDelete, defaultOpenComments = false, 
     const isAuthor = session?.user?.id === post.authorId?._id;
 
     const handleCardClick = (e) => {
-        // Prevent navigation if text is being selected
-        const selection = window.getSelection();
-        if (selection.toString().length > 0) return;
-
+        // Only navigate if we're not selecting text
+        if (window.getSelection()?.toString()) return;
         router.push(`/post/${post._id}`);
     };
 
