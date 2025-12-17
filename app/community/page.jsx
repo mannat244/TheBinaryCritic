@@ -5,6 +5,9 @@ import CommunityMember from "@/models/social/CommunityMember";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import CommunityGrid from "@/components/social/CommunityGrid";
+import { GradientBackground } from "@/components/ui/gradient-background";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Suspense } from "react";
 
 async function getCommunities() {
   await connectDB();
@@ -18,13 +21,38 @@ async function getUserJoinedIds(userId) {
   return memberships.map(m => m.communityId.toString());
 }
 
-import { GradientBackground } from "@/components/ui/gradient-background";
-
-export default async function CommunityPage() {
+async function AsyncCommunityList() {
   const session = await getServerSession(authOptions);
   const communities = await getCommunities();
   const joinedIds = await getUserJoinedIds(session?.user?.id);
 
+  return (
+    <CommunityGrid
+      communities={JSON.parse(JSON.stringify(communities))}
+      initialJoinedIds={joinedIds}
+    />
+  );
+}
+
+function CommunitySkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="h-64 md:h-72 lg:h-80 w-full bg-zinc-900/50 rounded-lg overflow-hidden relative border border-zinc-800">
+          <div className="absolute top-4 right-4">
+            <Skeleton className="h-6 w-16 bg-zinc-700/50 rounded-full" />
+          </div>
+          <div className="absolute bottom-4 left-4 right-4">
+            <Skeleton className="h-8 w-3/4 bg-zinc-800/50 mb-2" />
+            <Skeleton className="h-4 w-1/2 bg-zinc-800/50" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function CommunityPage() {
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
       {/* 🌈 Soft animated corner glow */}
@@ -54,10 +82,10 @@ export default async function CommunityPage() {
             </p>
           </div>
 
-          <CommunityGrid
-            communities={JSON.parse(JSON.stringify(communities))}
-            initialJoinedIds={joinedIds}
-          />
+          <Suspense fallback={<CommunitySkeleton />}>
+            <AsyncCommunityList />
+          </Suspense>
+
         </main>
       </div>
     </div>

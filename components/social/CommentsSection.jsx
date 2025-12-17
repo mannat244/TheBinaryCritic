@@ -1,5 +1,7 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -243,8 +245,8 @@ export default function CommentsSection({ postId, onCommentAdded }) {
                         <button onClick={() => setReplyingTo(null)} className="text-zinc-500 hover:text-zinc-300"><X className="w-3 h-3" /></button>
                     </div>
                 )}
-                <div className="flex gap-3 items-end">
-                    <Avatar className="w-8 h-8 hidden sm:block">
+                <div className="flex gap-3 items-end mb-3">
+                    <Avatar className="w-8 h-8 ml-1 hidden sm:block">
                         <AvatarImage src={session?.user?.image || session?.user?.avatar} />
                         <AvatarFallback>{session?.user?.name?.[0] || "?"}</AvatarFallback>
                     </Avatar>
