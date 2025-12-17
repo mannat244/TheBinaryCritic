@@ -12,6 +12,9 @@ const UserSchema = new mongoose.Schema(
     avatar: { type: String, default: "" },
     bio: { type: String, default: "" },
 
+    // Role
+    isAdmin: { type: Boolean, default: false },
+
     // Preferences
     favoriteGenres: { type: [String], default: [] },
     favoriteLanguages: { type: [String], default: [] },

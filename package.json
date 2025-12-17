@@ -29,6 +29,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "emoji-picker-element": "^1.28.0",
     "html-to-image": "^1.11.13",
     "idb": "^8.0.3",
     "lucide-react": "^0.555.0",
@@ -46,6 +47,7 @@
     "serpapi": "^2.2.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "vaul": "^1.1.2",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
