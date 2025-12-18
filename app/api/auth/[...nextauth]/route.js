@@ -42,7 +42,8 @@ export const authOptions = {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
-          avatar: user.avatar, // ⭐ FIX: Return avatar for session
+          avatar: user.avatar,
+          onboardingCompleted: user.onboardingCompleted, // ⭐ FIX: Pass status
         };
       },
     }),
@@ -55,51 +56,54 @@ export const authOptions = {
 
   callbacks: {
     // ⭐ MERGE GOOGLE + EMAIL ACCOUNTS
-   async signIn({ user, account }) {
-  await connectDB();
+    async signIn({ user, account }) {
+      await connectDB();
 
-  if (account.provider === "google") {
-    let dbUser = await User.findOne({ email: user.email });
+      if (account.provider === "google") {
+        let dbUser = await User.findOne({ email: user.email });
 
-    if (!dbUser) {
-      dbUser = await User.create({
-        name: user.name,
-        email: user.email,
-        avatar: user.image,
-        provider: "google",
-        onboardingCompleted: false,
-      });
-    }
+        if (!dbUser) {
+          dbUser = await User.create({
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            avatar: user.image,
+            provider: "google",
+            onboardingCompleted: false,
+          });
+        }
 
-    // 🔥 CRITICAL FIX
-    user.id = dbUser._id.toString();
-  }
+        // 🔥 CRITICAL FIX
+        user.id = dbUser._id.toString();
+        user.onboardingCompleted = dbUser.onboardingCompleted; // ⭐ FIX: Pass status
+      }
 
-  return true;
-   },
+      return true;
+    },
 
     // ⭐ MAIN FIX → ALWAYS USE MongoDB _id, NOT GOOGLE PROFILE ID
-   async jwt({ token, user, trigger, session }) {
-  if (user?.id) {
-    token.id = user.id;
-  }
+    async jwt({ token, user, trigger, session }) {
+      if (user?.id) {
+        token.id = user.id;
+        token.onboardingCompleted = user.onboardingCompleted; // ⭐ FIX: Persist to token
+      }
 
-  if (!token.id && token.email) {
-    await connectDB();
-    const dbUser = await User.findOne({ email: token.email });
-    if (dbUser) {
-      token.id = dbUser._id.toString();
-      token.onboardingCompleted = dbUser.onboardingCompleted;
+      if (!token.id && token.email) {
+        await connectDB();
+        const dbUser = await User.findOne({ email: token.email });
+        if (dbUser) {
+          token.id = dbUser._id.toString();
+          token.onboardingCompleted = dbUser.onboardingCompleted;
+        }
+      }
+
+      if (trigger === "update" && session?.onboardingCompleted !== undefined) {
+        token.onboardingCompleted = session.onboardingCompleted;
+      }
+
+      return token;
     }
-  }
-
-  if (trigger === "update" && session?.onboardingCompleted !== undefined) {
-    token.onboardingCompleted = session.onboardingCompleted;
-  }
-
-  return token;
-}
-,
+    ,
 
     // ⭐ MAKE USER ID AVAILABLE IN SESSION
     async session({ session, token }) {

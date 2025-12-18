@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 
-// TMDB Helper
+// TMDB Helper with Error Handling
 const TMDB = async (url) => {
-  const res = await fetch(url, {
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${process.env.TMDB_API_READ_ACCESS_TOKEN}`,
-    },
-    next: { revalidate: 300 }, // cache 5 mins on server
-  });
+  try {
+    const res = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${process.env.TMDB_API_READ_ACCESS_TOKEN}`,
+      },
+      next: { revalidate: 300 }, // cache 5 mins on server
+    });
 
-  if (!res.ok) return null;
-  return res.json();
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error("TMDB Fetch Error:", err.message);
+    return null;
+  }
 };
 
 export async function GET() {

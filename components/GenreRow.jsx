@@ -13,12 +13,19 @@ const normalizeList = (raw) => {
     return [];
 };
 
-const GenreRow = ({ title, endpoint }) => {
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
+const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }) => {
+    const [items, setItems] = useState(initialItems || []);
+    const [subtitle, setSubtitle] = useState(null);
+    const [loading, setLoading] = useState(!initialItems);
     const [error, setError] = useState(false);
 
     useEffect(() => {
+        if (initialItems) {
+            setItems(initialItems);
+            setLoading(false);
+            return;
+        }
+
         let alive = true;
 
         const fetchData = async () => {
@@ -26,25 +33,43 @@ const GenreRow = ({ title, endpoint }) => {
             setError(false);
 
             try {
-                const data = await browserCacheFetch(
-                    `genre-${title}`, // unique cache key
-                    async () => {
-                        const res = await fetch(endpoint, { cache: "no-store" });
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        return await res.json();
-                    },
-                    900 // 15 min cache
-                );
+                // Unique key for IndexedDB
+                const cacheKey = `genre-row-${endpoint}-v2`;
 
-                console.log(`[GenreRow:${title}] CACHED/FETCHED →`, data);
+                // Fetcher wrapper
+                const fetcher = async () => {
+                    const res = await fetch(endpoint, { cache: "no-store" });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                };
+
+                let data;
+
+                if (disableCache) {
+                    console.log(`[GenreRow:${title}] 🚫 Cache DISABLED. Fetching fresh.`);
+                    data = await fetcher();
+                } else {
+                    // Use robust browser cache with retries
+                    data = await browserCacheFetch(cacheKey, fetcher, 300, {
+                        retries: 2,
+                        retryDelay: 1000,
+                        staleWhileRevalidate: true
+                    });
+                }
+
+                if (!data) throw new Error("No data received");
+
+                console.log(`[GenreRow:${title}] LOADED →`, data?.length || 0, "items");
                 const list = normalizeList(data);
 
-                if (alive) setItems(list);
+                if (alive) {
+                    if (list.length > 0) setItems(list);
+                    if (data.context) setSubtitle(data.context);
+                }
             } catch (err) {
                 console.error(`❌ GenreRow fetch failed (${title})`, err);
                 if (alive) {
-                    setItems([]);
-                    setError(true);
+                    if (items.length === 0) setError(true);
                 }
             } finally {
                 if (alive) setLoading(false);
@@ -56,7 +81,7 @@ const GenreRow = ({ title, endpoint }) => {
         return () => {
             alive = false;
         };
-    }, [endpoint, title]);
+    }, [endpoint, title, initialItems, disableCache]);
 
     const getPoster = (item) => {
         if (item?.poster_path)
@@ -97,10 +122,12 @@ const GenreRow = ({ title, endpoint }) => {
 
     return (
         <div className="flex flex-col mb-8 relative z-10 w-full">
-            <h2 className="text-lg flex mb-3 font-bold bg-linear-to-l from-neutral-50 via-neutral-100 to-neutral-300 text-transparent bg-clip-text">
-                {title}
-                <ChevronRight className="text-neutral-500 my-auto ml-1 w-5 h-5" />
-            </h2>
+            <div className="flex items-end gap-3 mb-3">
+                <h2 className="text-lg flex font-bold bg-linear-to-l from-neutral-50 via-neutral-100 to-neutral-300 text-transparent bg-clip-text">
+                    {subtitle || title}
+                    <ChevronRight className="text-neutral-500 my-auto ml-1 w-5 h-5" />
+                </h2>
+            </div>
 
             <div className="relative group/row w-full">
                 <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-black via-black/80 to-transparent pointer-events-none z-20" />

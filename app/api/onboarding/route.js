@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 
@@ -18,6 +20,15 @@ import { pc } from "@/lib/pinecone";
 const pineconeIndex = pc.index("tbc");
 
 export async function POST(request) {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.id) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+  const userId = session.user.id;
+
   try {
     await connectDB();
 
@@ -25,7 +36,6 @@ export async function POST(request) {
     console.log("📥 Received Onboarding Data:", body);
 
     const {
-      userId,
       q1,
       q2,
       q2UserLanguages,
@@ -33,13 +43,6 @@ export async function POST(request) {
       q4,
       q5
     } = body;
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Missing userId" },
-        { status: 400 }
-      );
-    }
 
     // ---------------------------------------------------------
     // Q1 → Regions + Languages
