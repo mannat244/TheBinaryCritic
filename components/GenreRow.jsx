@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { browserCacheFetch } from "@/lib/browserCache";
 import { ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const normalizeList = (raw) => {
     if (Array.isArray(raw)) return raw;
@@ -13,7 +14,7 @@ const normalizeList = (raw) => {
     return [];
 };
 
-const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, cacheContext = "" }) => {
+const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, cacheContext = "", isPriority = false }) => {
     const [items, setItems] = useState(initialItems || []);
     const [subtitle, setSubtitle] = useState(null);
     const [loading, setLoading] = useState(!initialItems);
@@ -92,6 +93,8 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
         };
     }, [endpoint, title, initialItems, disableCache, cacheContext]);
 
+    const router = useRouter();
+
     const getPoster = (item) => {
         if (item?.poster_path)
             return `https://image.tmdb.org/t/p/w300${item.poster_path}`;
@@ -156,45 +159,49 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
                                     <div className="mt-2 h-3 w-20 bg-neutral-800/50 rounded animate-pulse" />
                                 </div>
                             ))
-                            : items.slice(0, 10).map((item, idx) => (
-                                <motion.div
-                                    key={item.id ?? idx}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex-none cursor-pointer snap-start"
-                                    onClick={() =>
-                                        item?.media_type &&
-                                        item?.id &&
-                                        (window.location.href = `/${item.media_type}/${item.id}`)
-                                    }
-                                >
-                                    <div className="relative w-28 h-40 xl:w-36 xl:h-56 rounded-lg overflow-hidden group">
-                                        <Image
-                                            src={getPoster(item)}
-                                            alt={item?.title || item?.name || "Poster"}
-                                            fill
-                                            className="object-cover rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300"
-                                            sizes="(max-width:768px) 112px, 144px"
-                                            quality={70}
-                                        />
-                                    </div>
+                            : items.slice(0, 10).map((item, idx) => {
+                                const type = item?.media_type || (item?.title ? "movie" : "tv");
+                                return (
+                                    <motion.div
+                                        key={item.id ?? idx}
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="flex-none cursor-pointer snap-start"
+                                        onClick={() => {
+                                            if (item?.id && type) {
+                                                router.push(`/${type}/${item.id}`);
+                                            }
+                                        }}
+                                    >
+                                        <div className="relative w-28 h-40 xl:w-36 xl:h-56 rounded-lg overflow-hidden group">
+                                            <Image
+                                                src={getPoster(item)}
+                                                alt={item?.title || item?.name || "Poster"}
+                                                fill
+                                                className="object-cover rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                sizes="(max-width:768px) 112px, 144px"
+                                                quality={70}
+                                                priority={isPriority && idx < 4}
+                                            />
+                                        </div>
 
-                                    <p className="mt-2 text-sm font-medium line-clamp-1 w-28 xl:w-36 bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text">
-                                        {item?.title || item?.name}
-                                    </p>
+                                        <p className="mt-2 text-sm font-medium line-clamp-1 w-28 xl:w-36 bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text">
+                                            {item?.title || item?.name}
+                                        </p>
 
-                                    <p className="
+                                        <p className="
                       mt-0.5 font-medium text-xs
                       bg-linear-to-r from-purple-300  via-neutral-800 to-purple-300
                       bg-size-[200%_100%] animate-[shimmer_2s_infinite]
                       text-transparent bg-clip-text
                     ">
-                                        {getLabel(item, idx)}
-                                    </p>
-                                </motion.div>
-                            ))}
+                                            {getLabel(item, idx)}
+                                        </p>
+                                    </motion.div>
+                                )
+                            })}
                     </AnimatePresence>
                 </div>
             </div>

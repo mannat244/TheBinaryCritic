@@ -53,26 +53,18 @@ export default function MoodDialog({ onMoodChange, initialOpen = false, external
         }
     }, []);
 
-    const handleSelect = async (moodId) => {
-        if (loading) return;
-        setLoading(true);
+    const handleSelect = (moodId) => {
+        // Optimistic UI: Update immediately
+        if (onMoodChange) onMoodChange(moodId);
+        handleOpenChange(false);
+        localStorage.setItem("tbc_last_mood_prompt", Date.now().toString());
 
-        try {
-            await fetch("/api/mood", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mood: moodId }),
-            });
-
-            if (onMoodChange) onMoodChange(moodId);
-
-            handleOpenChange(false);
-            localStorage.setItem("tbc_last_mood_prompt", Date.now().toString());
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+        // Sync in background (Fire and forget)
+        fetch("/api/mood", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mood: moodId }),
+        }).catch(err => console.error("Background mood sync failed", err));
     };
 
     return (

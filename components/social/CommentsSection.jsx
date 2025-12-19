@@ -245,7 +245,7 @@ export default function CommentsSection({ postId, onCommentAdded }) {
                         <button onClick={() => setReplyingTo(null)} className="text-zinc-500 hover:text-zinc-300"><X className="w-3 h-3" /></button>
                     </div>
                 )}
-                <div className="flex gap-3 items-end w-[90vw] mr-2 mb-12">
+                <div className="flex gap-3 items-end w-full px-4 mb-6 md:mb-4">
                     <Avatar className="w-8 h-8 ml-3 place-self-center sm:block">
                         <AvatarImage src={session?.user?.image || session?.user?.avatar} />
                         <AvatarFallback>{session?.user?.name?.[0] || "?"}</AvatarFallback>

@@ -50,7 +50,7 @@ export async function GET(req) {
 
   // List Communities
   const communities = await Community.find({})
-    .select("name description type membersCount postsCount")
+    .select("name description type membersCount postsCount slug image")
     .lean();
 
   if (!userId) return NextResponse.json(communities);

@@ -68,6 +68,7 @@ export default function ForYouFeed({
                 title="New & Relevant"
                 endpoint="/api/recommend/new_relevant"
                 cacheContext={mood}
+                isPriority={true}
             />
 
             {/* Row 2: Because You Reviewed */}

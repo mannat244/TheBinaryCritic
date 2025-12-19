@@ -1,93 +1,54 @@
-import { connectDB } from "@/lib/db";
-import mongoose from "mongoose";
-import Community from "@/models/social/Community";
-import Post from "@/models/social/Post";
+"use client";
+
 import Navbar from "@/components/Navbar";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Feed from "@/components/social/Feed";
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Users, ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
+import { useEffect, useState } from "react";
 
-async function getCommunity(slugOrId) {
-    try {
-        await connectDB();
+export default function CommunityFeedPage() {
+    const params = useParams();
+    const slug = params.slug;
 
-        let community = await Community.findOne({ slug: slugOrId }).lean();
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
-        // Fallback: If not found by slug, and it looks like an ID, try finding by ID
-        if (!community && mongoose.isValidObjectId(slugOrId)) {
-            community = await Community.findById(slugOrId).lean();
-        }
+    useEffect(() => {
+        if (!slug) return;
 
-        return community;
-    } catch (e) {
-        console.error("getCommunity error:", e);
-        return null;
-    }
-}
+        fetch(`/api/community/feed?slug=${slug}`)
+            .then((res) => {
+                if (!res.ok) throw new Error("Not Found");
+                return res.json();
+            })
+            .then((data) => {
+                setData(data);
+            })
+            .catch(() => setError(true))
+            .finally(() => setLoading(false));
+    }, [slug]);
 
-import PostLike from "@/models/social/PostLike";
+    if (error) return notFound();
 
-async function getPosts(communityId, userId = null) {
-    await connectDB();
-    const posts = await Post.find({ communityId })
-        .sort({ createdAt: -1 })
-        .limit(20)
-        .populate("authorId", "name avatar")
-        .lean();
-
-    const plainPosts = JSON.parse(JSON.stringify(posts));
-
-    if (!userId) {
-        return plainPosts.map(p => ({ ...p, isLiked: false }));
-    }
-
-    const postIds = plainPosts.map(p => p._id);
-    const likes = await PostLike.find({
-        userId,
-        postId: { $in: postIds }
-    }).lean();
-
-    const likedSet = new Set(likes.map(l => l.postId.toString()));
-
-    return plainPosts.map(post => ({
-        ...post,
-        isLiked: likedSet.has(post._id)
-    }));
-}
-
-export default async function CommunityFeedPage({ params }) {
-    const { slug } = await params;
-    console.log("CommunityFeedPage params:", { slug }); // DEBUG
-
-    const session = await getServerSession(authOptions);
-    const community = await getCommunity(slug);
-
-    console.log("Community Lookup Result:", community ? community.name : "Not Found"); // DEBUG
-
-    if (!community) {
-        return notFound();
-    }
-
-    const posts = await getPosts(community._id, session?.user?.id);
-
+    // 1. Instant Shell: Render Navbar + Banner Placeholder immediately
     return (
         <div className="min-h-screen bg-black text-white">
             <Navbar />
 
-            {/* Banner Section */}
-            {/* Banner Section - Ambience Only */}
-            <div className="relative h-40 md:h-52 w-full overflow-hidden">
-                {community.image ? (
+            {/* Banner Section - Optimistic UI */}
+            <div className="relative h-40 md:h-52 w-full overflow-hidden bg-zinc-900">
+                {/* Background Image (Fade in when loaded) */}
+                {data?.community?.image ? (
                     <Image
-                        src={community.image}
-                        alt={community.name}
+                        src={data.community.image}
+                        alt={data.community.name}
                         fill
-                        className="object-cover opacity-30 blur-3xl scale-110 saturate-150"
+                        className="object-cover opacity-30 blur-3xl scale-110 saturate-150 animate-in fade-in duration-700"
                         priority
                     />
                 ) : (
@@ -102,13 +63,25 @@ export default async function CommunityFeedPage({ params }) {
 
                     <div className="flex flex-col relative md:-top-10 md:flex-row md:items-end justify-between gap-3">
                         <div>
-                            <h1 className="text-xl md:text-2xl font-semibold text-white tracking-tight leading-none">{community.name}</h1>
+                            {loading ? (
+                                <Skeleton className="h-8 w-64 bg-zinc-800 rounded-md mb-2" />
+                            ) : (
+                                <h1 className="text-xl md:text-2xl font-semibold text-white tracking-tight leading-none animate-in slide-in-from-bottom-2 duration-500">
+                                    {data.community.name}
+                                </h1>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
                             <Users className="w-4 h-4" />
-                            <span className="text-zinc-300">{community.membersCount.toLocaleString()}</span>
-                            <span>members</span>
+                            {loading ? (
+                                <Skeleton className="h-4 w-20 bg-zinc-800 rounded-md" />
+                            ) : (
+                                <>
+                                    <span className="text-zinc-300">{data.community.membersCount.toLocaleString()}</span>
+                                    <span>members</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -116,14 +89,36 @@ export default async function CommunityFeedPage({ params }) {
 
             {/* Main Content */}
             <main className="max-w-4xl mx-auto px-4 py-8">
-
-                <div className="grid grid-cols-1 gap-8">
-                    {/* Feed Column */}
-                    <div>
-                        <Feed initialPosts={posts} communityId={community._id.toString()} />
+                {loading ? (
+                    <FeedSkeleton />
+                ) : (
+                    <div className="animate-in fade-in zoom-in-95 duration-300">
+                        <Feed
+                            initialPosts={data.posts}
+                            communityId={data.community._id}
+                        />
                     </div>
-                </div>
+                )}
             </main>
+        </div>
+    );
+}
+
+function FeedSkeleton() {
+    return (
+        <div className="space-y-6">
+            {/* Create Post Skeleton */}
+            <div className="h-32 w-full bg-zinc-900/50 rounded-xl border border-zinc-800 animate-pulse" />
+
+            {/* Posts Skeleton */}
+            {[1, 2, 3].map((i) => (
+                <div key={i} className="h-64 w-full bg-zinc-900/50 rounded-xl border border-zinc-800 animate-pulse relative">
+                    <div className="absolute top-4 left-4 h-10 w-10 rounded-full bg-zinc-800" />
+                    <div className="absolute top-4 left-16 h-4 w-32 bg-zinc-800 rounded" />
+                    <div className="absolute top-20 left-4 right-4 h-4 w-3/4 bg-zinc-800 rounded" />
+                    <div className="absolute top-28 left-4 right-4 h-4 w-1/2 bg-zinc-800 rounded" />
+                </div>
+            ))}
         </div>
     );
 }
