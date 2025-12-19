@@ -38,9 +38,18 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }
 
                 // Fetcher wrapper
                 const fetcher = async () => {
-                    const res = await fetch(endpoint, { cache: "no-store" });
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.json();
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 15000); // 15s timeout
+                    try {
+                        const res = await fetch(endpoint, {
+                            cache: "no-store",
+                            signal: controller.signal
+                        });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        return await res.json();
+                    } finally {
+                        clearTimeout(id);
+                    }
                 };
 
                 let data;

@@ -106,6 +106,15 @@ export async function GET() {
          🔥 FRANCHISE GUARD (MOVIES ONLY)
       ================================================== */
       let franchiseAdded = 0;
+      let collection = null;
+
+      if (a.mediaType === "movie" && cache.data.belongs_to_collection) {
+        try {
+          collection = await tmdbFetch(`${TMDB_BASE}/collection/${cache.data.belongs_to_collection.id}`);
+        } catch (e) {
+          // ignore collection fetch err
+        }
+      }
 
       for (const part of collection?.parts || []) {
         if (Number(part.id) === Number(a.tmdbId)) continue;
@@ -143,7 +152,13 @@ export async function GET() {
       ================================================== */
       const lang = cache.data.original_language;
       const genreIds = (cache.data.genres || []).map(g => g.id);
-      if (!lang || genreIds.length === 0) continue;
+
+      console.log(`[BecauseWatched] Fallback for ${a.tmdbId}: lang=${lang}, genres=${genreIds}`);
+
+      if (!lang || genreIds.length === 0) {
+        console.warn(`[BecauseWatched] ⚠️ Missing metadata for ${a.tmdbId}`);
+        continue;
+      }
 
       const pages = [1, 2, 3, 4, 5]
         .sort(() => 0.5 - Math.random())
@@ -159,6 +174,7 @@ export async function GET() {
           `&page=${page}`;
 
         const data = await tmdbFetch(url);
+        console.log(`[BecauseWatched] Filtered TMDB fetch: found ${data?.results?.length || 0} items`);
 
         for (const item of data?.results || []) {
           const key = `${a.mediaType}-${item.id}`;
