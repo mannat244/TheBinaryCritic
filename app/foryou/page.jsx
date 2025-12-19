@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Navbar from "@/components/Navbar";
 import { GradientBackground } from "@/components/ui/gradient-background";
 import GenreRow from "@/components/GenreRow";
+import ForYouFeed from "@/components/ForYouFeed";
 import SidebarCard from "@/components/SidebarPanel";
 import LoggedOutView from "@/components/LoggedOutView";
 import { Calendar, Sparkles } from "lucide-react";
@@ -34,9 +35,14 @@ export default async function ForYouPage() {
   const user = await User.findById(session.user.id).lean();
   const preferredGenreIds = user?.preferences?.user_vector?.q3_preferred_genres || [];
 
+  // Fetch current mood (server-side)
+  const currentMood = user?.currentMood?.value || null;
+
   // Sort by popularity priority
   const PRIORITY_GENRES = [28, 10749, 35, 53, 12, 18, 878];
-  const sortedIds = [...preferredGenreIds].sort((a, b) => {
+
+  // Deduped and sorted
+  const sortedIds = [...(preferredGenreIds || [])].sort((a, b) => {
     const idxA = PRIORITY_GENRES.indexOf(a);
     const idxB = PRIORITY_GENRES.indexOf(b);
     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -64,37 +70,13 @@ export default async function ForYouPage() {
         <Navbar />
 
         <div className="flex flex-col mt-20">
-          <h1 className="text-xl md:text-2xl flex ml-5 font-bold bg-linear-to-l from-neutral-50 via-neutral-100 to-neutral-300 text-transparent bg-clip-text">
-            For You 
-          </h1>
-
           <div className="mx-5 mt-4 flex justify-center xl:justify-start gap-6 relative">
-            {/* Main Content */}
-            <div className="flex-1 w-full min-w-0 max-w-[1250px]">
-
-              {/* Row 1: New & Relevant */}
-              <GenreRow title="New & Relevant" endpoint="/api/recommend/new_relevant" />
-
-              {/* Row 2: Because You Reviewed */}
-              <GenreRow title="Because You Reviewed" endpoint="/api/recommend/because_reviewed" />
-
-              {/* Row 3: Because You Watched */}
-              <GenreRow title="Because You Watched" endpoint="/api/recommend/because_watched" />
-
-              {/* Row 4: Trending Fallback */}
-              <GenreRow title="Trending Now" endpoint="/api/trending" />
-
-              {/* Dynamic Genre Rows */}
-              {sortedIds.map((genreId) => (
-                <GenreRow
-                  key={genreId}
-                  title={genreIdToName[genreId] || `Genre ${genreId}`}
-                  endpoint={`/api/recommend/genre_based?genre=${genreId}`}
-                />
-              ))}
-
-              <div className="h-20" />
-            </div>
+            {/* Main Content (Wrapped in Client Component) */}
+            <ForYouFeed
+              initialMood={currentMood}
+              preferredGenreIds={sortedIds}
+              genreIdToName={genreIdToName}
+            />
 
             {/* Sidebar */}
             <div className="hidden xl:block w-[10vw] relative -top-10 max-w-[360px]">

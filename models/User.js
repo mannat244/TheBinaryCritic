@@ -46,6 +46,12 @@ const UserSchema = new mongoose.Schema(
 
     watchedId: { type: mongoose.Schema.Types.ObjectId, ref: "User_Watched", default: null },
 
+    // Mood (Transient)
+    currentMood: {
+      value: { type: String, default: null },
+      updatedAt: { type: Date, default: null },
+    },
+
     // Timestamps
   },
   { timestamps: true }

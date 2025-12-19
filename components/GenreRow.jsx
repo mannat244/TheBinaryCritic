@@ -13,7 +13,7 @@ const normalizeList = (raw) => {
     return [];
 };
 
-const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }) => {
+const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, cacheContext = "" }) => {
     const [items, setItems] = useState(initialItems || []);
     const [subtitle, setSubtitle] = useState(null);
     const [loading, setLoading] = useState(!initialItems);
@@ -33,8 +33,8 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }
             setError(false);
 
             try {
-                // Unique key for IndexedDB
-                const cacheKey = `genre-row-${endpoint}-v2`;
+                // Unique key for IndexedDB (Mood-Aware)
+                const cacheKey = `genre-row-${endpoint}-${cacheContext}-v2`;
 
                 // Fetcher wrapper
                 const fetcher = async () => {
@@ -90,7 +90,7 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }
         return () => {
             alive = false;
         };
-    }, [endpoint, title, initialItems, disableCache]);
+    }, [endpoint, title, initialItems, disableCache, cacheContext]);
 
     const getPoster = (item) => {
         if (item?.poster_path)
@@ -181,7 +181,7 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false }
                                         />
                                     </div>
 
-                                    <p className="mt-2 text-sm font-medium line-clamp-1 max-w-[144px] bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text">
+                                    <p className="mt-2 text-sm font-medium line-clamp-1 w-28 xl:w-36 bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text">
                                         {item?.title || item?.name}
                                     </p>
 

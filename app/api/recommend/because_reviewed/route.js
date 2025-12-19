@@ -39,7 +39,6 @@ export async function GET() {
             verdict: { $in: ["masterpiece", "worth_it"] }
         })
             .sort({ createdAt: -1 })
-            .sort({ createdAt: -1 })
             .limit(10) // fetch pool of 10
             .lean();
 
@@ -47,9 +46,9 @@ export async function GET() {
             return NextResponse.json({ items: [] });
         }
 
-        // Shuffle and pick 2
-        const shuffled = reviews.sort(() => 0.5 - Math.random());
-        const anchors = shuffled.slice(0, 2);
+        // Pick 1 random anchor for clarity and variety
+        const randomAnchor = reviews[Math.floor(Math.random() * reviews.length)];
+        const anchors = [randomAnchor];
         const watchedDoc = await User_Watched.findOne({ userId }).lean();
         const watchedSet = new Set(
             (watchedDoc?.items || []).map(

@@ -2,59 +2,39 @@
 
 import Image from "next/image";
 import { Sparkles } from "lucide-react";
-import React from "react";
-
-const weeklyPicks = [
-  {
-    id: 1233531,
-    title: "Article 370",
-    poster_path: "/9VTemjHMpyxzfC3JsG2aFy8Bf9Y.jpg",
-    date: "2024-02-23",
-    media_type: "movie",
-    platform: "ZEE5",
-    url: "https://www.themoviedb.org/movie/1233531-370",
-  },
-  {
-    id: 292625,
-    title: "Single Papa",
-    poster_path: "/lZoeUMY9p0uza3aAhtnFxoiksO4.jpg",
-    date: "2025-12-12",
-    media_type: "tv",
-    platform: "Netflix",
-    url: "https://www.themoviedb.org/tv/292625-single-papa",
-  },
-  {
-    id: 1196364,
-    title: "Thamma",
-    poster_path: "/udkbDwBbysCGEydt0FHnl9dVO2k.jpg",
-    date: "2025-10-21",
-    media_type: "movie",
-    platform: "Prime Video",
-    url: "https://www.themoviedb.org/movie/1196364",
-  },
-
-  {
-    id: 1415974,
-    title: "Raat Akeli Hai: The Bansal Murders",
-    poster_path: "/dzv4sfVZmqSEiwVgO7W2wbQKVzN.jpg",
-    date: "2025-12-19",
-    media_type: "movie",
-    platform: "Netflix",
-    url: "https://www.themoviedb.org/movie/1415974",
-  },
-  {
-    id: 307004,
-    title: "Real Kashmir Football Club",
-    poster_path: "/zsoQmFWqLuCzpNvyeIrggUsoc9I.jpg",
-    date: "2025-12-08",
-    media_type: "tv",
-    platform: "Sony LIV",
-    url: "https://www.themoviedb.org/tv/307004-real-kashmir-football-club",
-  },
-];
-
+import React, { useEffect, useState } from "react";
+import { browserCacheFetch } from "@/lib/browserCache";
 
 export default function WeeklyPicks() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWeekly = async () => {
+      try {
+        const data = await browserCacheFetch(
+          "weekly-picks-data",
+          async () => {
+            const res = await fetch("/api/weekly");
+            if (!res.ok) throw new Error("Failed to fetch");
+            const json = await res.json();
+            return json.data || [];
+          },
+          3600 // 1 hour cache
+        );
+        setItems(data || []);
+      } catch (err) {
+        console.error("Weekly Picks Fetch Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeekly();
+  }, []);
+
+  if (!loading && items.length === 0) return null;
+
   return (
     <div className="flex flex-col mt-10">
       {/* Title */}
@@ -68,7 +48,7 @@ export default function WeeklyPicks() {
         <div
           className="
             grid
-            grid-cols-2
+            grid-cols-3
             xs:grid-cols-3
             sm:grid-cols-4
             md:grid-cols-5
@@ -77,54 +57,60 @@ export default function WeeklyPicks() {
             pb-3
           "
         >
-          {weeklyPicks.map((item, idx) => (
-            <div
-              key={item.id}
-              className="hover:bg-neutral-800/60 p-2 cursor-pointer rounded-xl transition-all flex flex-col w-fit"
-              onClick={() => {
-                if (item.media_type === "movie") {
-                  window.location.href = `/movie/${item.id}`;
-                } else if (item.media_type === "tv") {
-                  window.location.href = `/tv/${item.id}`;
-                }
-              }}
-            >
-              {/* Poster */}
-              <div className="relative w-auto h-56 rounded-lg overflow-hidden">
-                <Image
-                  src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
-                  alt={item.title}
-                  height={100}
-                  width={100}
-                  className="h-full w-fit rounded-lg"
-                  quality={70}
-                  sizes="(max-width: 500px) 48vw,
+          {loading
+            ? Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="p-2 rounded-xl flex flex-col w-fit">
+                <div className="relative w-28 h-40 xl:w-36 xl:h-56 rounded-lg overflow-hidden bg-neutral-800/50 animate-pulse" />
+                <div className="mt-2 h-3 w-20 bg-neutral-800/50 rounded animate-pulse" />
+                <div className="mt-1 h-2 w-12 bg-neutral-800/40 rounded animate-pulse" />
+              </div>
+            ))
+            : items.map((item, idx) => (
+              <div
+                key={item.id}
+                className="hover:bg-neutral-800/60 p-2 cursor-pointer rounded-xl transition-all flex flex-col w-fit group"
+                onClick={() => {
+                  if (item.media_type === "movie") {
+                    window.location.href = `/movie/${item.id}`;
+                  } else if (item.media_type === "tv") {
+                    window.location.href = `/tv/${item.id}`;
+                  }
+                }}
+              >
+                {/* Poster */}
+                <div className="relative w-auto h-40 xl:h-56 rounded-lg overflow-hidden group">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                    alt={item.title}
+                    height={100}
+                    width={100}
+                    className="h-full w-fit rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300"
+                    quality={70}
+                    sizes="(max-width: 500px) 48vw,
                          (max-width: 768px) 30vw,
                          (max-width: 1150px) 18vw,
                          12vw"
-                />
-              </div>
+                  />
+                </div>
 
-              {/* Title */}
-              <p className="mt-2 font-medium text-sm bg-gradient-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1">
-                {item.title.length > 17
-                  ? `${item.title.slice(0, 17)}...`
-                  : item.title}
-              </p>
+                {/* Title */}
+                <p className="mt-2 font-medium text-sm bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1 w-28 xl:w-36">
+                  {item.title}
+                </p>
 
-              {/* Label */}
-              <p
-                className="
+                {/* Label */}
+                <p
+                  className="
                 mt-0.5 font-medium text-xs
                 bg-gradient-to-r from-purple-300 via-neutral-800 to-purple-300
                 bg-[length:200%_100%] animate-[shimmer_2s_infinite]
                 text-transparent bg-clip-text
               "
-              >
-                {idx + 1}. Weekly Pick
-              </p>
-            </div>
-          ))}
+                >
+                  {idx + 1}. Weekly Pick
+                </p>
+              </div>
+            ))}
         </div>
       </div>
       <div className="h-16 w-1"></div>

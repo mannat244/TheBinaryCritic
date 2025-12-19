@@ -60,7 +60,7 @@ export async function GET() {
     if (
       user?.currentMood?.updatedAt &&
       Date.now() - new Date(user.currentMood.updatedAt).getTime() >
-        6 * 60 * 60 * 1000
+      2 * 60 * 60 * 1000
     ) {
       return NextResponse.json({ mood: null });
     }

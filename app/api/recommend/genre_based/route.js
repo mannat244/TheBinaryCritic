@@ -46,6 +46,28 @@ function scoreByTaste(item, ctx) {
   if (item.genre_ids?.includes(genreId)) score += 25;
   else score -= 40;
 
+  /* ---------- MOOD INFLUENCE (DYNAMIC) ---------- */
+  const mood = ctx.mood || null;
+  const MOOD_MAP = {
+    "happy_light": [35, 16, 10751],      // Comedy, Animation, Family
+    "sad_melancholic": [18, 10749],      // Drama, Romance
+    "adventurous_thrilled": [28, 12, 53],// Action, Adventure, Thriller
+    "dark_intense": [27, 80, 9648],      // Horror, Crime, Mystery
+    "chill_relaxed": [99, 10402, 36]     // Doc, Music, History
+  };
+
+  if (mood && MOOD_MAP[mood]) {
+    const targetGenres = MOOD_MAP[mood];
+    const hasMatch = item.genre_ids?.some(g => targetGenres.includes(g));
+
+    // 🚀 BIG BOOST if mood matches
+    if (hasMatch) score += 50;
+
+    // 📉 PENALTY if mood is opposite (e.g. Happy user vs Horror movie)
+    if (mood === "happy_light" && item.genre_ids?.includes(27)) score -= 100; // Horror
+    if (mood === "sad_melancholic" && item.genre_ids?.includes(35)) score -= 30; // Comedy (sometimes annoying when sad)
+  }
+
   /* ---------- USER DECLARED GENRE ---------- */
   if (q3.includes(genreId)) score += 15;
 
@@ -165,13 +187,23 @@ export async function GET(req) {
       if (y) years.push(y);
     }
 
+
+
     const avgYear =
       years.length > 0
         ? Math.round(years.reduce((a, b) => a + b, 0) / years.length)
         : 2019;
 
     /* --------------------------------------------------
-       2. DISCOVER (FRESH, RANDOMIZED)
+       2. GET MOOD (OPTIONAL)
+    -------------------------------------------------- */
+    const moodRes = await fetch(
+      `${process.env.NEXTAUTH_URL}/api/mood`,
+      { headers: { cookie: session.cookie || "" } }
+    ).then(r => r.json()).catch(() => null);
+
+    /* --------------------------------------------------
+       3. DISCOVER (FRESH, RANDOMIZED)
     -------------------------------------------------- */
     const languages =
       user.preferences.user_vector.q1?.preferred_languages?.length
@@ -247,7 +279,8 @@ export async function GET(req) {
       user,
       lovedGenreBoost,
       lovedLanguageBoost,
-      avgYear
+      avgYear,
+      mood: moodRes?.mood || null
     };
 
     const final = uniquePool

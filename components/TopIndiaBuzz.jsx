@@ -106,7 +106,7 @@ const TopIndiaBuzz = () => {
                                         />
                                     </div>
 
-                                    <p className="mt-2 font-medium text-sm bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1">
+                                    <p className="mt-2 font-medium text-sm bg-linear-to-l from-neutral-300 via-neutral-200 to-neutral-400 text-transparent bg-clip-text line-clamp-1 w-28 xl:w-36">
                                         {item.title}
                                     </p>
 

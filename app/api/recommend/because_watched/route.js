@@ -10,13 +10,17 @@ import TvCache from "@/models/TvCache";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+const MAX_FRANCHISE = 5;
+const MAX_PERSONA = 7;
+const FINAL_LIMIT = 20;
+
 async function tmdbFetch(url) {
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${process.env.TMDB_API_READ_ACCESS_TOKEN}`,
       accept: "application/json"
     },
-    next: { revalidate: 300 } // 5 mins
+    cache: "no-store"
   });
 
   if (!res.ok) throw new Error("TMDB fetch failed");
@@ -31,18 +35,28 @@ export async function GET() {
     await connectDB();
     const userId = session.user.id;
 
-    /* --------------------------------------------------
-       1. WATCHED ITEMS
-    -------------------------------------------------- */
+    /* ------------------------------------
+       1. WATCH HISTORY (LAST 6)
+    ------------------------------------ */
     const watchedDoc = await User_Watched.findOne({ userId }).lean();
     const watchedItems = watchedDoc?.items || [];
     if (watchedItems.length === 0) {
       return NextResponse.json({ items: [] });
     }
 
-    /* --------------------------------------------------
-       2. BLOCK REVIEWED ANCHORS (STRONGER SIGNAL)
-    -------------------------------------------------- */
+    watchedItems.sort(
+      (a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime()
+    );
+
+    const history = watchedItems.slice(0, 6);
+
+    const watchedSet = new Set(
+      watchedItems.map(i => `${i.mediaType}-${i.tmdbId}`)
+    );
+
+    /* ------------------------------------
+       2. REMOVE POSITIVELY REVIEWED
+    ------------------------------------ */
     const lovedReviews = await Review.find({
       userId,
       verdict: { $in: ["masterpiece", "worth_it"] }
@@ -52,39 +66,29 @@ export async function GET() {
       lovedReviews.map(r => `${r.mediaType}-${r.mediaId}`)
     );
 
-    const eligibleWatched = watchedItems.filter(
-      w => !blockedAnchors.has(`${w.mediaType}-${w.tmdbId}`)
+    const eligible = history.filter(
+      h => !blockedAnchors.has(`${h.mediaType}-${h.tmdbId}`)
     );
 
-    if (eligibleWatched.length === 0) {
+    if (eligible.length === 0) {
       return NextResponse.json({ items: [] });
     }
 
-    /* --------------------------------------------------
-       3. PICK DIVERSE WATCHED ANCHORS
-    -------------------------------------------------- */
-    eligibleWatched.sort(
-      (a, b) => new Date(b.watchedAt) - new Date(a.watchedAt)
-    );
+    /* ------------------------------------
+       3. PICK 1 RANDOM ANCHOR
+    ------------------------------------ */
+    // eligible is already top 6 recent, pick random one for variety
+    const randomAnchor = eligible[Math.floor(Math.random() * eligible.length)];
+    const anchors = [randomAnchor];
 
-    const candidatePool = eligibleWatched.slice(0, 8);
-    const anchors = candidatePool
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 2);
-
-    const watchedSet = new Set(
-      watchedItems.map(i => `${i.mediaType}-${i.tmdbId}`)
-    );
 
     let results = [];
     let contextText = null;
 
-    /* --------------------------------------------------
+    /* ------------------------------------
        4. PROCESS EACH ANCHOR
-    -------------------------------------------------- */
-    for (let i = 0; i < anchors.length; i++) {
-      const a = anchors[i];
-
+    ------------------------------------ */
+    for (const a of anchors) {
       const cache =
         a.mediaType === "movie"
           ? await MovieCache.findOne({ movieId: a.tmdbId }).lean()
@@ -92,73 +96,77 @@ export async function GET() {
 
       if (!cache?.data) continue;
 
-      /* ---------- CONTEXT (ONLY ONCE) ---------- */
+      const data = cache.data;
+
       if (!contextText) {
-        const title =
-          a.mediaType === "movie"
-            ? cache.data.title
-            : cache.data.name;
-
-        contextText = `Because you watched ${title}`;
+        contextText = `Because you watched ${a.mediaType === "movie" ? data.title : data.name
+          }`;
       }
 
-      /* ==================================================
-         🔥 FRANCHISE GUARD (MOVIES ONLY)
-      ================================================== */
-      let franchiseAdded = 0;
-      let collection = null;
+      const language = data.original_language;
+      const genres = (data.genres || []).map((g) => g.id);
 
-      if (a.mediaType === "movie" && cache.data.belongs_to_collection) {
+      /* ================================
+         4.1 FRANCHISE (MAX 5)
+      ================================ */
+      let franchiseCount = 0;
+
+      if (a.mediaType === "movie" && data.belongs_to_collection) {
         try {
-          collection = await tmdbFetch(`${TMDB_BASE}/collection/${cache.data.belongs_to_collection.id}`);
-        } catch (e) {
-          // ignore collection fetch err
+          const collection = await tmdbFetch(
+            `${TMDB_BASE}/collection/${data.belongs_to_collection.id}`
+          );
+
+          for (const part of collection?.parts || []) {
+            if (franchiseCount >= MAX_FRANCHISE) break;
+            if (part.id === a.tmdbId) continue;
+            if (watchedSet.has(`movie-${part.id}`)) continue;
+
+            results.push({
+              ...part,
+              media_type: "movie",
+              _reason: "from the same franchise"
+            });
+
+            franchiseCount++;
+          }
+        } catch { }
+      }
+
+      /* ================================
+         4.2 PERSONA (ACTOR)
+      ================================ */
+      let personaCount = 0;
+      const leadActor = data.credits?.cast?.[0]?.id;
+
+      if (leadActor) {
+        const personaUrl =
+          `${TMDB_BASE}/discover/${a.mediaType}` +
+          `?with_people=${leadActor}` +
+          `&with_original_language=${language}` +
+          `&sort_by=popularity.desc`;
+
+        const personaData = await tmdbFetch(personaUrl);
+
+        for (const item of personaData?.results || []) {
+          if (personaCount >= MAX_PERSONA) break;
+          const key = `${a.mediaType}-${item.id}`;
+          if (watchedSet.has(key)) continue;
+
+          results.push({
+            ...item,
+            media_type: a.mediaType,
+            _reason: "because you like this star"
+          });
+
+          personaCount++;
         }
       }
 
-      for (const part of collection?.parts || []) {
-        if (Number(part.id) === Number(a.tmdbId)) continue;
-
-        // ❌ BLOCK FUTURE SEQUELS COMPLETELY
-        if (
-          part.release_date &&
-          cache.data.release_date &&
-          new Date(part.release_date) > new Date(cache.data.release_date)
-        ) {
-          continue;
-        }
-
-        const key = `movie-${part.id}`;
-        if (watchedSet.has(key)) continue;
-
-        results.push({
-          ...part,
-          media_type: "movie",
-          _reason: "from the same universe"
-        });
-
-        franchiseAdded++;
-      }
-
-      // ✅ only skip discover if franchise actually helped
-      if (franchiseAdded >= 2) {
-        continue; // enough franchise content, no fallback needed
-      }
-      // else → FALL THROUGH to discover
-
-
-      /* ==================================================
-         5. DISCOVER FALLBACK (NON-FRANCHISE)
-      ================================================== */
-      const lang = cache.data.original_language;
-      const genreIds = (cache.data.genres || []).map(g => g.id);
-
-      console.log(`[BecauseWatched] Fallback for ${a.tmdbId}: lang=${lang}, genres=${genreIds}`);
-
-      if (!lang || genreIds.length === 0) {
-        console.warn(`[BecauseWatched] ⚠️ Missing metadata for ${a.tmdbId}`);
-        continue;
-      }
+      /* ================================
+         4.3 TASTE DISCOVER (ALWAYS)
+      ================================ */
+      if (!language || genres.length === 0) continue;
 
       const pages = [1, 2, 3, 4, 5]
         .sort(() => 0.5 - Math.random())
@@ -167,23 +175,23 @@ export async function GET() {
       for (const page of pages) {
         const url =
           `${TMDB_BASE}/discover/${a.mediaType}` +
-          `?with_original_language=${lang}` +
-          `&with_genres=${genreIds.join(",")}` +
+          `?with_original_language=${language}` +
+          `&with_genres=${genres.join(",")}` +
           `&include_adult=false` +
           `&sort_by=release_date.desc` +
           `&page=${page}`;
 
-        const data = await tmdbFetch(url);
-        console.log(`[BecauseWatched] Filtered TMDB fetch: found ${data?.results?.length || 0} items`);
+        const d = await tmdbFetch(url);
 
-        for (const item of data?.results || []) {
+        for (const item of d?.results || []) {
           const key = `${a.mediaType}-${item.id}`;
           if (watchedSet.has(key)) continue;
 
           const year =
             item.release_date?.slice(0, 4) ||
             item.first_air_date?.slice(0, 4);
-          if (year && Number(year) < 2000) continue;
+
+          if (year && Number(year) < 2005) continue;
 
           results.push({
             ...item,
@@ -194,37 +202,23 @@ export async function GET() {
       }
     }
 
-    /* --------------------------------------------------
-       6. DEDUPE + RANK (NO FAN OFFENSE)
-    -------------------------------------------------- */
+    /* ------------------------------------
+       5. DEDUPE + FINAL TRIM
+    ------------------------------------ */
     const seen = new Set();
-    const deduped = [];
+    const final = [];
 
     for (const r of results) {
       const key = `${r.media_type}-${r.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      deduped.push(r);
+      final.push(r);
+      if (final.length >= FINAL_LIMIT) break;
     }
-
-    deduped.sort((a, b) => {
-      const yearA =
-        Number(a.release_date?.slice(0, 4) || a.first_air_date?.slice(0, 4) || 0);
-      const yearB =
-        Number(b.release_date?.slice(0, 4) || b.first_air_date?.slice(0, 4) || 0);
-
-      const recencyA = yearA ? (yearA - 2000) * 0.4 : 0;
-      const recencyB = yearB ? (yearB - 2000) * 0.4 : 0;
-
-      const qualityA = (a.vote_average || 5) * 1.2;
-      const qualityB = (b.vote_average || 5) * 1.2;
-
-      return (recencyB + qualityB) - (recencyA + qualityA);
-    });
 
     return NextResponse.json({
       context: contextText,
-      items: deduped.slice(0, 20)
+      items: final
     });
 
   } catch (err) {
