@@ -1,0 +1,16 @@
+name: Box Office Scheduler
+
+on:
+  schedule:
+    # Runs at 08:30 UTC daily (approx 2:00 PM IST)
+    - cron: '30 8 * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  ping-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Box Office Agent API
+        run: |
+          curl -X POST https://thebinarycritic.in/api/agent/box-office \
+          -H "x-api-secret: ${{ secrets.CRON_SECRET }}"

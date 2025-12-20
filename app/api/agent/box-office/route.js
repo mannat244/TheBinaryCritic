@@ -150,20 +150,36 @@ async function generateBoxOfficeBanner(allMovies) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: '#09090b', // Zinc 950
+                        backgroundColor: '#0a0a0a', // Matched to Share Card
                         fontFamily: '"Roboto"',
                         position: 'relative',
+                        overflow: 'hidden', // Ensure blobs don't overflow
                     }}
                 >
-                    {/* Background Glow */}
+                    {/* Background Glow 1: Top Right Purple */}
                     <div style={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '1200px',
-                        height: '630px',
-                        backgroundImage: 'radial-gradient(circle at 50% 0%, #2a2a2e 0%, #09090b 70%)',
-                        display: 'flex', // Satori quirk safe-guard
+                        top: -100, // Partial offset
+                        right: -100,
+                        width: '600px',
+                        height: '600px',
+                        backgroundColor: 'rgba(168, 85, 247, 0.2)', // purple-500/20
+                        borderRadius: '100%',
+                        filter: 'blur(100px)',
+                        display: 'flex',
+                    }} />
+
+                    {/* Background Glow 2: Bottom Left Blue */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: -100,
+                        left: -100,
+                        width: '600px',
+                        height: '600px',
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)', // blue-500/15 (slightly bumped for visibility)
+                        borderRadius: '100%',
+                        filter: 'blur(100px)',
+                        display: 'flex',
                     }} />
 
                     {/* Header */}
@@ -255,7 +271,7 @@ async function generateBoxOfficeBanner(allMovies) {
                 height: 630,
                 fonts: [
                     {
-                        name: 'Roboto',
+                        name: 'Montserrat',
                         data: fontData,
                         style: 'normal',
                         weight: 700,
@@ -581,21 +597,19 @@ export async function POST(req) {
         }
 
         // 2. Check duplicate (Once every 20 hours)
-        /* 
-        // DISABLED FOR TESTING
+        // 2. Check duplicate (Once every 12 hours)
         if (AGENT_USER_ID) {
-          const TWENTY_HOURS_AGO = new Date(Date.now() - 20 * 60 * 60 * 1000);
-          const existingPost = await Post.findOne({
-              communityId: COMMUNITY_ID,
-              authorId: AGENT_USER_ID,
-              createdAt: { $gt: TWENTY_HOURS_AGO }
-          });
-    
-          if (existingPost) {
-              return NextResponse.json({ skipped: true, message: "Already posted today" });
-          }
+            const TWELVE_HOURS_AGO = new Date(Date.now() - 12 * 60 * 60 * 1000);
+            const existingPost = await Post.findOne({
+                communityId: COMMUNITY_ID,
+                authorId: AGENT_USER_ID,
+                createdAt: { $gt: TWELVE_HOURS_AGO }
+            });
+
+            if (existingPost) {
+                return NextResponse.json({ skipped: true, message: "Already posted today" });
+            }
         }
-        */
         // 3. Generate Content (Scrape)
         const generated = await scrapeAndGeneratePost();
 
