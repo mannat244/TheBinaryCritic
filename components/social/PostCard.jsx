@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import CommentsDrawer from "./CommentsDrawer"; // Import the new Drawer
 
 import { useRouter } from "next/navigation";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function PostCard({ post, onDelete, defaultOpenComments = false, disableCommentDrawer = false }) {
     const { data: session } = useSession();
@@ -163,9 +165,11 @@ export default function PostCard({ post, onDelete, defaultOpenComments = false, 
                         </div>
 
                         {post.content && (
-                            <p className="text-zinc-300 text-[15px] leading-relaxed whitespace-pre-wrap mb-3 break-words">
-                                {post.content}
-                            </p>
+                            <div className="text-zinc-300 text-[15px] leading-relaxed mb-3 break-words [&>p]:mb-2 [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table]:text-sm [&>table>thead>tr>th]:border-b [&>table>thead>tr>th]:border-zinc-700 [&>table>thead>tr>th]:pb-2 [&>table>thead>tr>th]:text-left [&>table>thead>tr>th]:text-zinc-400 [&>table>tbody>tr>td]:py-2 [&>table>tbody>tr>td]:border-b [&>table>tbody>tr>td]:border-zinc-800 [&>table>tbody>tr>td]:text-zinc-300">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {post.content}
+                                </ReactMarkdown>
+                            </div>
                         )}
 
                         {post.media && post.media.length > 0 && (
