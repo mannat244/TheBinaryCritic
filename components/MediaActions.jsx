@@ -570,6 +570,7 @@ export default function MediaActions({ tmdbId, mediaType, title, posterPath, rel
             className="gap-2 bg-black/40 border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white transition-all z-50 relative"
           >
             <Share2 className="w-4 h-4" />
+
           </Button>
         </DialogTrigger>
         <DialogContent className="bg-neutral-950 border-neutral-800 text-white sm:max-w-md">
