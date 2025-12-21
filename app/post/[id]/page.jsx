@@ -37,7 +37,7 @@ export async function generateMetadata({ params }) {
         return { title: 'Post not found' };
     }
 
-    const title = `${post.authorId?.name} on The Binary Critic`;
+    const title = `${post.authorId?.name}`;
     const description = post.content?.substring(0, 160) || "Check out this post on The Binary Critic";
     const images = post.media && post.media.length > 0 ? [post.media[0]] : [];
 

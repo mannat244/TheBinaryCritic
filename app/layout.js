@@ -4,14 +4,48 @@ import { SessionProviderWrapper } from "@/components/providers/SessionProviderWr
 import { Toaster } from "@/components/ui/sonner";
 
 const montserrat = Montserrat({
-  
+
 });
 
 
 
 export const metadata = {
-  title: "The Binary Critic",
-  description: "The Binary Critic - Discover, review, and discuss movies and TV shows.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://thebinarycritic.in"),
+  title: {
+    default: "The Binary Critic",
+    template: "%s | The Binary Critic",
+  },
+  description: "Discover, review, and discuss movies and TV shows with a community of enthusiasts. Real reviews, real people.",
+  keywords: ["movies", "tv shows", "reviews", "ratings", "community", "cinema", "entertainment", "social network"],
+  authors: [{ name: "The Binary Critic Team" }],
+  creator: "The Binary Critic",
+  publisher: "The Binary Critic",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://thebinarycritic.in",
+    siteName: "The Binary Critic",
+    title: "The Binary Critic",
+    description: "Discover, review, and discuss movies and TV shows.",
+    images: [
+      {
+        url: "/icon1.png", // Assuming this exists or use a better OG image
+        width: 1200,
+        height: 630,
+        alt: "The Binary Critic",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Binary Critic",
+    description: "Discover, review, and discuss movies and TV shows.",
+    creator: "@thebinarycritic", // Placeholder
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }) {
