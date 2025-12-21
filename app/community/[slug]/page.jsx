@@ -19,6 +19,8 @@ export async function generateMetadata({ params }) {
         openGraph: {
             title: `${community.name} | The Binary Critic`,
             description: community.description,
+            url: `https://thebinarycritic.in/community/${slug}`,
+            siteName: "The Binary Critic",
             images: community.image ? [community.image] : [],
         },
         twitter: {

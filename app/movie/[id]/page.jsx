@@ -12,6 +12,8 @@ export async function generateMetadata({ params }) {
       openGraph: {
         title: `${movie.title} | The Binary Critic`,
         description: movie.overview,
+        url: `https://thebinarycritic.in/movie/${id}`,
+        siteName: "The Binary Critic",
         images: movie.backdrop_path
           ? [`https://image.tmdb.org/t/p/w780${movie.backdrop_path}`]
           : movie.poster_path

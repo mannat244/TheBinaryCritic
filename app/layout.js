@@ -29,7 +29,7 @@ export const metadata = {
     description: "Discover, review, and discuss movies and TV shows.",
     images: [
       {
-        url: "/icon1.png", // Assuming this exists or use a better OG image
+        url: "https://s6.imgcdn.dev/YU9XB9.png",
         width: 1200,
         height: 630,
         alt: "The Binary Critic",
@@ -40,6 +40,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "The Binary Critic",
     description: "Discover, review, and discuss movies and TV shows.",
+    images: ["https://s6.imgcdn.dev/YU9XB9.png"],
     creator: "@thebinarycritic", // Placeholder
   },
   robots: {
