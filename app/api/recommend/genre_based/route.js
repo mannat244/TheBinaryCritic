@@ -217,13 +217,18 @@ export async function GET(req) {
       for (const page of pages) {
         if (fresh.length >= 60) break;
 
-        const url =
+        let url =
           `https://api.themoviedb.org/3/discover/movie` +
           `?with_genres=${genreId}` +
           `&with_original_language=${lang}` +
           `&include_adult=false` +
           `&sort_by=popularity.desc` +
           `&page=${page}`;
+
+        // 🟢 FIX: Avoid short films in Romance (<30m)
+        if (genreId === 10749) {
+          url += `&with_runtime.gte=30`;
+        }
 
         const res = await fetch(url, {
           headers: {

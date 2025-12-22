@@ -20,7 +20,14 @@ export default function WeeklyPicks() {
             const json = await res.json();
             return json.data || [];
           },
-          3600 // 1 hour cache
+          3600, // 1 hour cache (Initial) -> Reduced check to 60s
+          {
+            ttlSeconds: 60,
+            onBackgroundUpdate: (newData) => {
+              console.log("✨ [WeeklyPicks] Live Update Received");
+              if (newData && newData.length > 0) setItems(newData);
+            }
+          }
         );
         setItems(data || []);
       } catch (err) {

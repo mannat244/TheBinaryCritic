@@ -60,10 +60,17 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
                     data = await fetcher();
                 } else {
                     // Use robust browser cache with retries
-                    data = await browserCacheFetch(cacheKey, fetcher, 300, {
+                    data = await browserCacheFetch(cacheKey, fetcher, 60, {
                         retries: 2,
                         retryDelay: 1000,
-                        staleWhileRevalidate: true
+                        staleWhileRevalidate: true,
+                        onBackgroundUpdate: (newData) => {
+                            if (alive && newData) {
+                                console.log(`[GenreRow:${title}] 📡 Live Update Received`);
+                                const list = normalizeList(newData);
+                                if (list.length > 0) setItems(list);
+                            }
+                        }
                     });
                 }
 

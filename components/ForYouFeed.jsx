@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MoodDialog from "./MoodDialog";
 import GenreRow from "./GenreRow";
 import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ForYouFeed({
     initialMood,
@@ -13,11 +14,29 @@ export default function ForYouFeed({
     const [mood, setMood] = useState(initialMood);
     const [refreshKey, setRefreshKey] = useState(0);
     const [manualOpen, setManualOpen] = useState(false);
+    const [isVibeCoolingDown, setIsVibeCoolingDown] = useState(false);
+
+    useEffect(() => {
+        const lastInteraction = localStorage.getItem("tbc_vibe_last_used");
+        if (lastInteraction) {
+            const diff = Date.now() - parseInt(lastInteraction);
+            if (diff < 30 * 60 * 1000) { // 30 mins
+                setIsVibeCoolingDown(true);
+            }
+        }
+    }, []);
 
     const handleMoodChange = (newMood) => {
         setMood(newMood);
         setRefreshKey((prev) => prev + 1); // Force re-mount of rows
-        console.log("Mood changed to:", newMood, "Rows refreshing...");
+
+        // Cooldown Logic
+        localStorage.setItem("tbc_vibe_last_used", Date.now().toString());
+        setIsVibeCoolingDown(true);
+
+        toast("Wait we are watching content so that we can recommend...", {
+            description: "Your feed is updating based on your vibe."
+        });
     };
 
     // Sort by popularity priority (Moved logic to client for simplicity, or keep passed sortedIds)
@@ -45,13 +64,15 @@ export default function ForYouFeed({
                     For You
                 </h1>
 
-                <button
-                    onClick={() => setManualOpen(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-xs font-medium text-neutral-300"
-                >
-                    <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-                    <span>Vibe Check</span>
-                </button>
+                {!isVibeCoolingDown && (
+                    <button
+                        onClick={() => setManualOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-xs font-medium text-neutral-300 animate-in fade-in zoom-in duration-300"
+                    >
+                        <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                        <span>Vibe Check</span>
+                    </button>
+                )}
             </div>
 
             <MoodDialog

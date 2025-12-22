@@ -69,7 +69,7 @@ export default function MoodDialog({ onMoodChange, initialOpen = false, external
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-md bg-black/90 border-white/10 backdrop-blur-xl">
+            <DialogContent className="sm:max-w-md bg-black/90 border-white/10 backdrop-blur-xl duration-500 data-[state=open]:duration-500">
                 <DialogHeader className="mb-4">
                     <DialogTitle className="flex items-center gap-2 text-xl font-bold bg-linear-to-r from-white to-neutral-400 bg-clip-text text-transparent">
                         <Sparkles className="w-5 h-5 text-yellow-400" />

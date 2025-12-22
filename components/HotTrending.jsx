@@ -24,7 +24,14 @@ const HotTrending = () => {
             if (!res.ok) throw new Error("Failed to fetch");
             return await res.json();
           },
-          900 // 15 min cache
+          900, // 15 min cache (Initial) -> Reduced to 60s for checking
+          {
+            ttlSeconds: 60, // Check for updates every minute
+            onBackgroundUpdate: (newData) => {
+              console.log("🔥 [HotTrending] Live Update Received");
+              if (newData && newData.length > 0) setItems(newData);
+            }
+          }
         );
 
         console.log("🔥 TRENDING JSON:", JSON.stringify(data, null, 2));

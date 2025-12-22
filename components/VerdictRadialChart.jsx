@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { RadialBarChart, RadialBar, PolarRadiusAxis, Label } from "recharts";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Star } from "lucide-react";
@@ -16,6 +17,21 @@ export default function VerdictRadialChart({
   voteAvg = 0,
   voteCount = 0,
 }) {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    // Return a skeleton or null during SSR to avoid mismatch
+    return (
+      <Card className="bg-black border-white/10 h-[260px] animate-pulse">
+        <CardContent className="h-full" />
+      </Card>
+    );
+  }
+
   const tbcReviews = stats?.totalReviews || 0;
   const hasTMDB = voteCount > 0 && voteAvg > 0;
   // Show TBC if:

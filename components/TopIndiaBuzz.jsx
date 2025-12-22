@@ -22,7 +22,14 @@ const TopIndiaBuzz = () => {
                         const json = await res.json();
                         return json.data || [];
                     },
-                    900 // 15 mins client cache
+                    900, // 15 mins client cache (Initial) -> Reduced check to 60s
+                    {
+                        ttlSeconds: 60,
+                        onBackgroundUpdate: (newData) => {
+                            console.log("⚡ [IndiaBuzz] Live Update Received");
+                            if (newData && newData.length > 0) setItems(newData);
+                        }
+                    }
                 );
                 // Remove hard slice to allow "See More" expansion
                 setItems(data || []);
