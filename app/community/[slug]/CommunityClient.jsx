@@ -10,6 +10,11 @@ import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Lock } from "lucide-react";
+import RulesDialog from "@/components/social/RulesDialog";
+import { toast } from "sonner";
+
 export default function CommunityClient({ initialCommunity }) {
     const params = useParams();
     const slug = params.slug;
@@ -17,10 +22,16 @@ export default function CommunityClient({ initialCommunity }) {
     // Initialize with initialCommunity if available
     const [data, setData] = useState(initialCommunity ? { community: initialCommunity, posts: [] } : null);
 
+    // Track membership locally
+    const [isJoined, setIsJoined] = useState(false);
+
     // Loading is only for the Feed content if we have initialCommunity
     // If no initialCommunity, we are loading everything
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    // Rules Dialog
+    const [showRules, setShowRules] = useState(false);
 
     useEffect(() => {
         if (!slug) return;
@@ -33,10 +44,32 @@ export default function CommunityClient({ initialCommunity }) {
             })
             .then((feedData) => {
                 setData(feedData);
+                setIsJoined(feedData.isJoined);
             })
             .catch(() => setError(true))
             .finally(() => setLoading(false));
     }, [slug]);
+
+    const handleJoin = async () => {
+        try {
+            const res = await fetch("/api/community/join", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ communityId: data.community._id }),
+            });
+
+            if (!res.ok) throw new Error("Failed to join");
+
+            const resData = await res.json();
+            if (resData.action === "joined") {
+                setIsJoined(true);
+                toast.success(`Welcome to ${data.community.name}!`);
+                setShowRules(false);
+            }
+        } catch (error) {
+            toast.error("Failed to join community");
+        }
+    };
 
     if (error) return notFound();
 
@@ -87,12 +120,24 @@ export default function CommunityClient({ initialCommunity }) {
                             </h1>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
-                            <Users className="w-4 h-4" />
-                            <span className="text-zinc-300">
-                                {data.community.membersCount ? data.community.membersCount.toLocaleString() : "..."}
-                            </span>
-                            <span>members</span>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
+                                <Users className="w-4 h-4" />
+                                <span className="text-zinc-300">
+                                    {data.community.membersCount ? data.community.membersCount.toLocaleString() : "..."}
+                                </span>
+                                <span>members</span>
+                            </div>
+
+                            {!isJoined && (
+                                <Button
+                                    size="sm"
+                                    className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/40"
+                                    onClick={() => setShowRules(true)}
+                                >
+                                    Join Community
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -102,15 +147,40 @@ export default function CommunityClient({ initialCommunity }) {
             <main className="max-w-4xl mx-auto px-4 py-8">
                 {loading ? (
                     <FeedSkeleton />
-                ) : (
+                ) : isJoined ? (
                     <div className="animate-in fade-in zoom-in-95 duration-300">
                         <Feed
                             initialPosts={data.posts}
                             communityId={data.community._id}
                         />
                     </div>
+                ) : (
+                    /* Restricted State */
+                    <div className="flex flex-col items-center justify-center py-20 text-center border border-zinc-800 rounded-2xl bg-zinc-900/30">
+                        <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
+                            <Lock className="w-8 h-8 text-zinc-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Members Only Content</h2>
+                        <p className="text-zinc-400 max-w-md mb-8">
+                            Join <span className="text-violet-400">{data.community.name}</span> to view posts, discussions, and exclusive content.
+                        </p>
+                        <Button
+                            size="lg"
+                            className="bg-violet-600 hover:bg-violet-500"
+                            onClick={() => setShowRules(true)}
+                        >
+                            Read Rules & Join
+                        </Button>
+                    </div>
                 )}
             </main>
+
+            <RulesDialog
+                open={showRules}
+                onOpenChange={setShowRules}
+                onConfirm={handleJoin}
+                communityName={data.community.name}
+            />
         </div>
     );
 }
