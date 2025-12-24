@@ -127,7 +127,7 @@ const HotTrending = () => {
                   key={item.id || idx} // Ensure stable key for animation (idx fallback if needed)
                   className="hover:bg-neutral-800/60 p-2 cursor-pointer rounded-xl transition-colors flex flex-col w-fit"
                 >
-                  <div className="relative w-auto h-40 xl:h-56 rounded-lg overflow-hidden group">
+                  <div className="relative w-28 xl:w-36 h-40 xl:h-56 rounded-lg overflow-hidden group">
                     <Image
                       src={getPoster(item)}
                       alt={item.title || item.name}

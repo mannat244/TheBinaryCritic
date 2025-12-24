@@ -4,7 +4,8 @@ import { SessionProviderWrapper } from "@/components/providers/SessionProviderWr
 import { Toaster } from "@/components/ui/sonner";
 
 const montserrat = Montserrat({
-
+  subsets: ["latin"],
+  display: "swap",
 });
 
 
