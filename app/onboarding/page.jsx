@@ -131,7 +131,6 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    console.log("Submitting Onboarding Answers:", answers);
 
     try {
       await fetch("/api/onboarding", {

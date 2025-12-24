@@ -43,6 +43,15 @@ export const metadata = {
     images: ["https://s6.imgcdn.dev/YU9XB9.png"],
     creator: "@thebinarycritic", // Placeholder
   },
+  icons: {
+    icon: "/favicon.ico", // Standard ICO
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png", // For Apple devices
+    other: {
+      rel: "icon",
+      url: "/icon1.png", // High-res PNG for Google (ensure this is 48x48, 96x96, etc.)
+    },
+  },
   robots: {
     index: true,
     follow: true,

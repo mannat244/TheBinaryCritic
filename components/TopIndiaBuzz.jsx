@@ -26,7 +26,6 @@ const TopIndiaBuzz = () => {
                     {
                         ttlSeconds: 60,
                         onBackgroundUpdate: (newData) => {
-                            console.log("⚡ [IndiaBuzz] Live Update Received");
                             if (newData && newData.length > 0) setItems(newData);
                         }
                     }

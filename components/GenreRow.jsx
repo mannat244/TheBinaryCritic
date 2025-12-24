@@ -56,7 +56,6 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
                 let data;
 
                 if (disableCache) {
-                    console.log(`[GenreRow:${title}] 🚫 Cache DISABLED. Fetching fresh.`);
                     data = await fetcher();
                 } else {
                     // Use robust browser cache with retries
@@ -66,7 +65,6 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
                         staleWhileRevalidate: true,
                         onBackgroundUpdate: (newData) => {
                             if (alive && newData) {
-                                console.log(`[GenreRow:${title}] 📡 Live Update Received`);
                                 const list = normalizeList(newData);
                                 if (list.length > 0) setItems(list);
                             }
@@ -76,7 +74,6 @@ const GenreRow = ({ title, endpoint, initialItems = null, disableCache = false, 
 
                 if (!data) throw new Error("No data received");
 
-                console.log(`[GenreRow:${title}] LOADED →`, data?.length || 0, "items");
                 const list = normalizeList(data);
 
                 if (alive) {

@@ -28,13 +28,12 @@ const HotTrending = () => {
           {
             ttlSeconds: 60, // Check for updates every minute
             onBackgroundUpdate: (newData) => {
-              console.log("🔥 [HotTrending] Live Update Received");
               if (newData && newData.length > 0) setItems(newData);
             }
           }
         );
 
-        console.log("🔥 TRENDING JSON:", JSON.stringify(data, null, 2));
+
         setItems(data);
       } catch (err) {
         console.error("FETCH ERROR:", err);

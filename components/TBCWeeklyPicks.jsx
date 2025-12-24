@@ -24,7 +24,6 @@ export default function WeeklyPicks() {
           {
             ttlSeconds: 60,
             onBackgroundUpdate: (newData) => {
-              console.log("✨ [WeeklyPicks] Live Update Received");
               if (newData && newData.length > 0) setItems(newData);
             }
           }

@@ -19,6 +19,7 @@ const nextConfig = {
     domains: ["image.tmdb.org", "m.media-amazon.com"],
     qualities: [70, 75, 50, 60],
     formats: ["image/avif", "image/webp"], // <-- ADD THIS
+    unoptimized: true, // <-- BYPASS VERCEL OPTIMIZATION (Saves Quota)
     // <-- MUST be inside images
   },
 
