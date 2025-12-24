@@ -67,7 +67,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className={`bg-background dark`}>
         <SessionProviderWrapper>
-          {children}
+          <main className="min-h-screen">{children}</main>
           <Toaster />
         </SessionProviderWrapper>
       </body>
