@@ -49,9 +49,9 @@ const TopIndiaBuzz = () => {
 
     const getPoster = (item) => {
         if (item.poster_path)
-            return `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+            return `https://image.tmdb.org/t/p/w185${item.poster_path}`;
         if (item.backdrop_path)
-            return `https://image.tmdb.org/t/p/w780${item.backdrop_path}`;
+            return `https://image.tmdb.org/t/p/w300${item.backdrop_path}`;
         return "/default-placeholder.webp";
     };
 

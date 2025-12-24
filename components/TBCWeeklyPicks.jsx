@@ -86,7 +86,7 @@ export default function WeeklyPicks() {
                 {/* Poster */}
                 <div className="relative w-auto h-40 xl:h-56 rounded-lg overflow-hidden group">
                   <Image
-                    src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                    src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
                     alt={item.title}
                     height={100}
                     width={100}
